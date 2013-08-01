@@ -36,6 +36,7 @@ Implementation
 . Construct medium and long messages [X][X][X][X][X]
 . Extract medium and long message [X][X][X][][]
 . Make PING, PONG, and CLOSE frames [X]
+. Return frame length explicitly [][][]
 . Read in frames [][][][][]
 
 
