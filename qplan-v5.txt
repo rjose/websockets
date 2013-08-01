@@ -1,0 +1,236 @@
+QPlan v5
+========
+Rino Jose <@rjose>
+v1, Jul 25, 2013: Initial version
+
+Overview
+--------
+I've been reading the
+link:http://www.amazon.com/The-UNIX-Philosophy-ebook/dp/B002OL2G4G[Unix
+Philsophy] again over the past few days. Something that's been nagging me for a
+while with qplan is that I haven't written it in a unixy way. It has a captive
+user interface, it doesn't interface with other programs, etc. In this iteration
+of qplan, I'd like to try to make the pieces smaller and have the shell be the
+primary interaction mechanism. We'll still need a server that can accept and
+handle requests, but we'll interact with it differently from the commandline.
+I'm thinking we should have a program that I can pipe text into that could be
+interpreted as commands. We'd specify (or configure) the server/port/path that
+these commands would be sent to. The program would then write the output from
+the server to stdout. All the output should be in a form that can be easily
+processed by awk (e.g., tab separated fields). 
+
+If we organized our programs this way, we could have a separate formatting
+program that would know how to take data (or sets of data) and prepare the
+appropriate output. One would be the create more "standardized" output for
+further processing. We should be able to switch this to an ascii report or to
+JSON. I think these should be separate programs.
+
+The server would also use the shell to pipe output from program to program to
+generate a final result.
+
+When we want to broadcast data, we could put the pipe together first, and then
+have the final part of the pipe be something that could send data to others via
+an HTTP request or a websocket. A websocket might be the way to go if we needed
+to make decisions on what data to ask for based on some initial data from the
+server -- in effect, if we needed the client and server to have a conversation
+before getting the final data.
+
+Implementation
+--------------
+. Write google doc spreadsheet to stdout [X][X][][]
+. Condition data and pipe into mocked up qplan client [X][X][X]<X><X><X><X><X>
+. Get minimal qplan server running [X][X][X][X][X][X]
+. Establish websocket connection with server [X][X][X][X][][]
+. Handle websocket PING, CLOSE, and echo [X][X][X][X][X][][]
+. Push output of rbt to a browser [][][][][][]
+. rbt is implemented as series of pipes [][][][][]
+
+1 - Write google doc spreadsheet to stdout
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Let's see if we can just get something to work. I'll hardcode my password to
+begin with -- I have to remember not to check this version in! The first step
+is getting gspread to work. Let's see if we can get the sample working with
+our google doc spreadsheet. OK, I got the spreadsheet data out (and tab
+separated!). Let's move my username and password to a config file that only I
+can read. I'll call this .gcat.conf. Let's see if I can add my info to this
+and read it in. Done! Let's check this in.
+
+Before we go on too much further, let's think about how we want to deal with
+multiple spreadsheets. We could store two invocations of gcat in two variables
+and then manipulate the data separately, but it would be really nice if we
+could just store the immediate results directly at any point in the pipeline.
+We'd have to include some header info that described the type of data from
+each file. I'll look through the load.sh script to see how hard it would be to
+incorprate this...I think we could have a single awk script that could store
+data from various file types and then write them out in sections.
+
+Our qplan_client could just make an HTTP request to the qplan_server with the
+data. We'll need to add support for this to qplan (and a route). I wonder if
+we could just use curl to make the request for us?
+
+
+2 - Condition data and pipe into mocked up qplan_client
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Let's start by creating a qplan_source.ini file that lists spreadsheet key,
+worksheet index, and type. We should be able to pipe this into gcat.py and
+have it do the extractions. Done. Let's check in. Before we go on, let's
+specify the sections to read in in the source.ini file itself.
+
+Next up is conditioning the work data a la workify. We want to gather all work
+data together. Let's start by handling different sections. I'm going to pipe
+this into a file so I don't have to keep grabbing data. Now, let's see if we
+can see the Work section.
+
+After this, we'll handle staff data. The staff data is somewhat interesting. I
+think I'll try to read the tracks out of the spreadsheet instead of hardcoding
+them. Alright, I wrote the staff parsing code by hand. It's much more
+resilient now.  Let's check this in.
+
+The last piece here is writing the qplan client. Should we write this in
+python, lua, or zsh? Let's do this in python. I want to split the data into
+work data and staff data. After that, I'll strip off the headers and make two
+requests to a server to update the data. I guess we can do a POST to
+/work_items and one to /assignments.
+
+Actually, I think we should do this in lua. That way, if I decide to go with
+websockets for the communication with the server, I can use the code I'm
+developing now. Also, I'm going to have an explicit updater app instead of a
+generic client. Also, what I'll do is make the POST requests to a nonexistent
+server and then in the next part bring over the code to run the server.
+
+
+NOTE: Why did this take so long? Part of this was dealing with non-ASCII data from
+the spreadsheet. Part of it was rewriting the staff parsing logic. Part of it
+was just debugging.
+
+3 - Get minimal qplan server running
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+OK, the next step is to get a minimal qplan server to run. We *don't* want it
+to load any data files. That should come from cat-ing data into the
+qplan_updater. We'll bring files over one at a time and comment out any data
+loading. Alright, I got something running. Let's see if we can print out that
+we got a request. Hmmm...it looks like I'm not storing the body right now. At
+the first "\r\n", we stop reading. Need to check the content length. OK, read
+in a body now and passing it along to the handler.
+
+Some of the code that I'm adding feels prototype-y. I feel like I'm cutting a
+corner by trying to get it in so quickly. Not sure what the right level of
+testing I need to be doing right now.
+
+Anyways...let's see if I can hook the init code that parses work and staff to
+the resource router. This is in the app/data.lua and app/reader.lua. I'm going
+to create an array of work items in the handler and then figure out where to
+move the function. OK, I can construct work items. Next, let's construct staff
+and then create a plan. Hmmm...creating a plan kind of needs the work and
+staff items together. I'll get past this by having a global work_items
+variable. Going forward, websockets seems to be a better way of handling this.
+
+Alright, the last step here is updating the plan. I think I'll just do a POST
+with an empty body to "/plan" and have the router set things up for now. There
+are things about the plan (like the cutline) that are starting to make less
+sense now.
+
+Aargh! Running into newlines that are present in some of the columns. I think
+I'll have to go back up to gcat and just select the columns that don't have
+text that people are messing with.
+
+Hey, it worked! Let me add one more thing before I stop. I want to only
+highlight in red the items that are truly short of resources (not just below a
+feasible line).
+
+I really need to add some tests.
+
+
+4 - Establish websocket connection with server
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Alright, what I want to do is write a client that can establish a websocket
+connection. Let's start with just that. It looks like there's a lua
+link:https://github.com/lipp/lua-websockets/blob/master/src/websocket/handshake.lua[websockets
+module]. Looking through the source code, it looks pretty good. Let me see if
+I can get this running. Hmmm...got a build failure.
+
+I wonder if we could use node.js instead? Let me investigate. OK, I'll give
+link:https://github.com/einaros/ws[ws] a try. Install worked fine. Let's open
+a connection to a sample websocket site. OK, that worked just fine. Cool. This
+looks pretty nice. Since I have a reference implementation, I should be able
+to get my websocket version to work. Let's do this next. Actually, let's see
+what happens if I just try to create a connection. Got an error (as expected).
+
+Alright, let's see if we can hook up the websocket code to deal with the
+websocket request. I'm going to symlink the websocket files and try to do a
+build. Files built, but I got missing references to SHA1. Let's revise our
+GNUMakefile similar to what's in our websockets subdir. OK, that worked. Let's
+clean up our warnings and then check in. Alright, I cleaned up the warnings
+and all the tests passed!
+
+Now, we should be able to hook the functions in. Let's see if we can recognize
+a websocket request. We want to use "ws_is_handshake". Alright, I can
+distinguish these. Awesome. Let's split the "handle_request_routine" into an
+http handler and a websocket handler next. OK, I started in on this, but it
+looks too tangly. Let's back out what we've done and rethink this. Let's try
+splitting the variables into pre read request and post. Let's write a function
+to read the request string and one to read the body next. OK, I can read
+a request string and a body using separate functions now.
+
+So, now we're back to splitting the http and websocket handling. We need to be
+careful about unlocking the lua context mutex. Alright, this is done. Next up
+is adding the websocket handling function. I'll complete the handshake and
+then let the connection close. It worked! Let's check this piece in. Actually,
+we're done with this piece. Let's rebase and tag.
+
+
+5 - Handle websocket PING, CLOSE, and echo
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Let's start by reading in the frame. Once we have that, we should be able to
+check what kind of frame it is. We'll have to use our same buffered read
+function. I'm going to add some websocket-y code in web.c (for gathering
+frames, etc.), but if I can make this generic, this should be pulled out.
+Hmmm...this will take a little longer than I thought because I have to write
+the code that gathers the frames. Let's do echo first, since I think that's
+the easiest. Let's see if we can at least extract a message.
+
+Hmmm...I'm running into an issue with the second byte being NULL. I wonder if
+I'm nulling out the result. Nope, it was a fencepost error in
+my_buffered_read. Aargh.
+
+There's a couple of things going on in my head right now. The first is that I
+need to implement the websockets code in the websockets module. The second is
+that I should use wireshark to debug the communication between client and
+server. The third is that I want to set up my git repo a bit better for this.
+
+Let's see how hard it is to set up Wireshark. I'll give it 1 pomodoro. The
+good news is that *yum install wireshark* just worked. Well almost. I also had
+to do a *yum install wireshark-gnome*. OK, I did the echo and see the
+exchange. Cool. I can see the data I sent over. The echoed message is correct.
+After the echo, I see that the client sent over "88 82 d0 ec f2 0f d3 04".
+Let's see if I can figure this out. The first byte means "final and CLOSE".
+The second byte means "is masked with length of 2". Not sure what the message
+body is. Let's try to handle the CLOSE frame and see if that cleans things up.
+Yup, that was it. I'll check this in and then try to handle PONG. Alright, it
+turns out that my PONG frame is incomplete. I'm only sending 1 byte. I need to
+be sending 2.
+
+OK, found another bug. I need to return an explicit length when constructing
+the websocket frames -- strlen will stop at the first 0x0 byte. This will
+break the tests... I think what I'll do is fix the PONG case and then circle
+back to the websocket library when I work on that in earnest. Alright, I was
+able to get the PING/PONG to work. Technically, I'm done so let's check in and
+then rethink my git strategy.
+
+
+Thoughts
+--------
+We should use link:https://github.com/burnash/gspread[gspread] to grab source
+data from google docs.
+
+I need to document the scripts so they can describe what's expected of them.
+
+I also want to figure out how to test the pieces and the pipeline.
+
+I looked through how the node.js ws module starts a handshake. They just use a
+date. I guess we could use that, too.
+
+Refactoring takes a while sometimes, especially when there are variables that
+aren't well separated.
+
+Need to handle message fragments. This should be in websockets.
