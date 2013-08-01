@@ -1,0 +1,209 @@
+QPlan V1 Spec
+=============
+Rino Jose <rjose@linkedin.com>
+Jun 6, 2013: Initial spec
+
+Drafting effort [][][]
+
+Overview
+--------
+This version of QPlan will be implemented in Lua. It will only implement
+functions that we'll access from a QPlan repl. We'll have the following
+functionality:
+
+- Read people, work, plans from file
+- Write work and plans to file
+- Add work items
+- Update work items (especially estimates)
+- Rank work items
+- Tag work items
+- Select work items by criteria
+- Set plan cutline and determine feasibility
+- Determine feasible line
+- Triage work and determine feasibility
+- Compute running demand and net availability totals
+- Print reports for selections of work items, plan summary, work item
+  groupings
+
+Implementation
+--------------
+We'll do TDD based on the work from our
+link:https://github.com/rjose/prototypes/blob/master/qplan-mini/qplan-mini.txt[
+qplan-mini prototypes]. We'll organize the tests as follows:
+
+.Read/write Data
+- Read people, work, plans from file
+- Write work and plans to file
+
+.People tests
+- Get skill availability
+
+.Work item manipulation
+- Add work items
+- Update work items (especially estimates)
+- Tag work items
+
+.Planning
+- Select plan work items by criteria
+- Rank work items
+- Compute running demand and net availability totals
+
+.Feasibility
+- Set plan cutline and determine feasibility
+- Determine feasible line
+
+.Triage
+- Triage work and determine feasibility
+- Assemble triaged work (a little unsure about this)
+
+.Reports
+- Print reports for selections of work items, plan summary, work item
+  groupings
+
+Finally, we'll add our shell functions that will be used in an actual planning
+session. These are things like adding a new work item, setting the estimates,
+ranking items, displaying items. The shell functions have to be really smart
+about handling bad input. We need to test edge cases aggressively here.
+
+
+Infrastructure
+~~~~~~~~~~~~~~
+We'll start by getting our data, test data, test directories, and utility
+files in place.
+
+Getting started
+~~~~~~~~~~~~~~~
+.Person
+- proto7: skill availability
+
+.Plan
+- proto4: ranking work
+- proto5: selecting work in a plan
+
+.Work
+- proto5: estimate string parsing
+
+.Read/write
+- proto5: estimates to string
+- proto7: parsing skill from disk
+- proto8: reading/writing data
+
+
+The one main hole is the tag mechanism. I may want to do a prototype pass on
+this before I really implement it.
+
+Check TODOs
+~~~~~~~~~~~
+.test_work
+- Need to maintain a list of work (and plans) and a way to get the next ID
+- Look up clojure function name for applying an operation to multiple arrays
+
+.test_plan
+- Adding a work item to a plan should take an existing work item. It shouldn't
+  create one. It's OK to have a shell function that does both steps
+- Get ranked items shouldn't return a cutline object in the result. The
+  reporting function can use the plan data to do this when creating output.  
+- When adding work to a plan, should be able to specify position in the list.
+  Should use same semantics as ranking.
+- When adding work to a plan, should be able to specify a tag (like triaging
+  info)
+- When creating work items for a test, use the Work constructor
+- Come up with better naming convention for running_totals functions
+
+.Other
+- Hook up saving of data on change. May need to create a callback/publishing
+  mechanism. For now, may be OK to just explicitly save.
+
+.test_read_write
+- Test reading of tags and writing of tags
+
+.Reporting
+- Should be able to print a plan with a cutline
+
+.Shell functions
+- Should be able to specify a tag when adding work from shell
+- Should be able to sum available skills up front
+
+
+Action Items
+~~~~~~~~~~~~
+- Document Reader
+
+Development
+-----------
+
+- Pass 1: Get infrastructure in place
+- Pass 2: TDD on work
+- Pass 3: Refactor work
+- Pass 4: TDD on plan [X][X][X][X][X][][]
+- Pass 5: Refactor plan and document [X][X][]
+- Pass 6: TDD on read/write [X][X][X][X][X][][]
+- Pass 7: Shell functions [][][][][]
+- Pass 8: Reporting functions [][][][][]
+
+Pass 4: TDD on Plan
+~~~~~~~~~~~~~~~~~~~
+This is where we'll pull a work table out as something that we pass around. This
+should actually make testing a lot easier. I think a convention I'll make is
+that we'll always call *get_work_items* to get an array of work items, but we'll
+pass in some options to narrow the selection. For instance, we might just get
+work items above the cutline, or maybe work items above the cutline with a given
+tag.
+
+Pass 5: Refactor plan and document
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+I'm going to start by cleaning up and documenting test_plan. After that, we'll
+rearrange and document plan.lua.
+
+Pass 6: Read/write
+~~~~~~~~~~~~~~~~~~
+The first thing we should do is parse out tags. We should use the same format
+for skills as we do for tags so we can reuse this code. Done. Next, we should
+implement reading of work items. We'll create a test file and compare. OK, I can
+read everything from disk. Let's document and rearrange.
+
+Thoughts
+--------
+There are a few patterns that I'd like to emphasize. One is that we should
+have functions that focus on selecting things, grouping things, and operating
+on arrays of things. We shouldn't combine these too much. For instance, we
+should group things that we've previously selected or that we've selected and
+then operated on.
+
+Another thing is that there should be no global module data. We should pass
+around tables and arrays to all functions.
+
+We should construct our data up front. We should create our test directories
+up front. We should have a directory for temporary files. We should write
+tests first based on all we know from our prototypes. Our tests should
+exercise happy paths and edge cases.
+
+We should take an inventory of all TODOs and make sure we either address them,
+note them for the future, or choose not to do them. This is also the time to
+come up with conventions for naming functions.
+
+Also, next time when we do vertical slices, we should treat each slice as a
+prototype rather than slicing across prototypes. This made it hard to refer to
+any particular prototype when we were done.
+
+For things like the maximum ID so far, we should create a function that gets
+and sets it. The actual variable will be in memory for now, but at some point,
+it will go into a database/cache.
+
+We need to distinguish between arrays and tables. Arrays should be things that
+are ordered and indexed by an integer from 1 to n. Tables should be
+dictionaries that are indexed by arbitrary key.
+
+I should write on the lifecycle of code: idea, prototype, product, library
+
+The next set of prototypes should be simpler because I'll have some of the
+modules pre-defined at that point (like the functional module).
+
+When saving, we should create new files each time. There should be a way to
+combine all fo the files into a single state file that can be read on init. More
+on this later.
+
+.Getting started
+I want to get the tests in place first. I'll bring functionality over
+step-by-step, renaming and refactoring as we go.
+
