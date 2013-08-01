@@ -26,10 +26,10 @@ feasible cutline.
 ]]--
 
 
-local func = require('functional')
+local func = require('modules/functional')
 local Work = require('work')
 
-local Object = require('object')
+local Object = require('modules/object')
 
 local Plan = {}
 Plan._new = Object._new
@@ -112,6 +112,7 @@ function Plan:get_work_items(options)
 
         local stop_index = #work_ids
         
+        -- TODO: Don't use this filter anymore (prefer filters)
         -- If specified, return work items above the cutline
         if options.ABOVE_CUT then
                 stop_index = self.cutline
@@ -144,6 +145,7 @@ function Plan:get_work(rank)
 	end
 
 	local result = self.work_table[self.work_items[rank]]
+        print("get_work", result)
 	return result
 end
 
@@ -194,6 +196,17 @@ function Plan:get_supply_totals(options)
 	return running_supply[#running_supply], running_supply, running_demand
 end
 
+-- Converts skill_totals in man-weeks into num-people
+function Plan:to_num_people(skill_totals)
+        if skill_totals == nil then
+                return {}
+        end
+
+	for k, _ in pairs(skill_totals) do
+		skill_totals[k] = skill_totals[k] / self.num_weeks
+	end
+	return skill_totals
+end
 
 -- PRIORITIZING WORK ----------------------------------------------------------
 --
@@ -263,24 +276,12 @@ end
 -- PLAN FEASIBILITY -----------------------------------------------------------
 --
 
--- This is a helper function used to check if any skill values are < 0. Such a
--- case implies an infeasible plan.
-function is_any_skill_negative(skills)
-	local result = false
-	for skill, avail in pairs(skills) do
-		if avail < 0 then
-			result = true
-			break
-		end
-	end
-	return result
-end
 
 -- Checks if the cutline and the associated skill supply result in a feasible
 -- plan.
 function Plan:is_feasible()
 	local net_supply = self:get_supply_totals({["ABOVE_CUT"] = 1})
-	local is_feasible = not is_any_skill_negative(net_supply)
+	local is_feasible = not Work.is_any_skill_negative(net_supply)
 	return is_feasible, net_supply
 end
 
@@ -288,19 +289,7 @@ end
 -- Given a default supply and a set of work, this finds the lowest cutline for
 -- which the plan is feasible.
 function Plan:find_feasible_line()
-	local work_items = self:get_work_items()
-	local feasible_line = #work_items
-
-	local _, running_supply, running_demand = self:get_supply_totals()
-
-	for i = 1,#running_supply do
-		if is_any_skill_negative(running_supply[i]) then
-			feasible_line = i - 1
-			break
-		end
-	end
-
-	return feasible_line, running_demand, running_supply
+        return Work.find_feasible_line(self:get_work_items(), self.default_supply)
 end
 
 

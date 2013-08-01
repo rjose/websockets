@@ -1,6 +1,14 @@
 -- TODO: Document this
 local func = {}
 
+function func.map_table(f, t)
+	local result = {}
+	for k, item in pairs(t) do
+                result[k] = f(item)
+	end
+	return result
+end
+
 function func.filter(items, filter)
 	local result = {}
 	for _, item in ipairs(items) do
@@ -28,14 +36,24 @@ function func.key_union(...)
         return result
 end
 
+-- TODO: Rewrite this function to match key_union
+function func.value_union(acc, table)
+        for _, val in pairs(table) do
+                acc[val] = 1
+        end
+        return acc
+end
+
 -- Returns all the keys in a table
 function func.get_table_keys(t)
 	local result = {}
 	for k, _ in pairs(t) do
 		result[#result+1] = k .. ""
 	end
+        table.sort(result)
 	return result
 end
+
 
 -- This applies a function of 2 variables key-wise to two tables. The function f
 -- should handle nil values in a way that makes sense.
@@ -117,5 +135,50 @@ function func.group_items(items, get_bucket)
 end
 
 
+-- This takes an array of items and a filter function that can be called on
+-- each element. This returns only the items for which the filter is true
+function func.select_items(items, filter)
+	local result = {}
+	for i = 1,#items do
+		if filter(items[i]) then
+			result[#result+1] = items[i]
+		end
+	end
+	return result
+end
+
+-- Selects the first *num_items* things (at most) from an array of items. If
+-- the optional *filter* is specified, it is applied before returning the
+-- results.
+function func.select_n_items(items, num_items, filter)
+	local result = {}
+
+	if num_items <= 0 then
+		return result
+	end
+
+	-- Get the first *num_items* items
+	for i = 1,#items do
+		result[#result+1] = items[i]
+		if i == num_items then
+			break
+		end
+	end
+
+	-- Filter if needed
+	if filter then
+		result = Select.select_items(result, filter)
+	end
+
+	return result
+end
+
+function func.shallow_copy(src)
+        local result = {}
+        for k, v in pairs(src) do
+                result[k] = v
+        end
+        return result
+end
 
 return func

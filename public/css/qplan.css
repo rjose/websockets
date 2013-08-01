@@ -1,0 +1,192 @@
+/* ============================================================================
+ * Body-wide styling
+ */
+body {
+        font-family: "Courier New", Courier, "Lucida Sans Typewriter", "Lucida Typewriter", monospace
+}
+
+/*
+ * Wrapper for centering content
+ */
+.wrapper {
+        margin: 0 auto 0 auto;
+        position: relative;
+}
+
+/* ============================================================================
+ * Navigation
+ */
+#main-heading {
+        position: fixed;
+        top: 10px;
+        margin: 0;
+        padding: 0;
+}
+
+#track-selector {
+        width: 235px;
+        position: fixed;
+        margin-top: 70px;
+}
+
+#track-selector ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        width: 215px;
+}
+
+#track-selector li {
+        background-color: #444;
+        color: #CCC;
+}
+
+
+#track-selector li a {
+        text-decoration: none;
+        background-color: #444;
+        color: #CCC;
+        display: block;
+        padding: 0.5em;
+        border: 1px dotted #CCC;
+}
+
+#track-selector li.selected-true a {
+        background-color: blue;
+        outline-style: none;
+}
+
+
+/* ============================================================================
+ * Main content
+ */
+#main {
+        left: 235px;
+        width: 705px;
+        padding: 1em;
+}
+
+#main-content section {
+        position: absolute;
+        top: 0;
+        border: 1px dotted gray;
+}
+
+#main-content h2 {
+        padding: 0;
+        margin-top: 0px;
+        margin-bottom: 1em;
+}
+
+#main-content h3 {
+        margin-top: 2em;
+}
+
+
+/* ============================================================================
+ * Staff content
+ */
+section#staff {
+        left: 990px;
+        width: 350px;
+        padding: 1em 2em;
+}
+
+#staff h3.enough-staff-false {
+        color: red;
+}
+
+/* ============================================================================
+ * Slider
+ */
+
+#triage-slider {
+        margin-bottom: 2em;
+}
+
+#triage-slider span {
+        display: inline-block;
+        vertical-align: middle;
+}
+
+#triage-slider input {
+        vertical-align: middle;
+        display: inline-block;
+}
+
+/* ============================================================================
+ * Overview table
+ */
+
+table.stats {
+        border-collapse: collapse;
+}
+
+.stats th.col-head {
+        width: 6em;
+        text-align: center;
+}
+
+.stats th.row-head {
+        text-align: right;
+        padding-right: 0.5em;
+}
+
+.stats td {
+        text-align: center;
+        border: 1px solid gray;
+        height: 1.5em;
+} 
+
+td.understaffed-true {
+        color: red;
+        font-weight: bold;
+}
+
+tr.net-left td {
+        border-top: 4px double #333;
+}
+
+
+/* ============================================================================
+ * Work details table
+ */
+
+table.work-details {
+        border-collapse: collapse;
+}
+
+.work-details th,
+.work-details td {
+        text-align: left;
+        vertical-align: top;
+        padding: 0.25em 0.5em;
+        border-bottom: 1px solid black;
+}
+
+.work-details .field-rank {
+        width: 3em;
+}
+
+.work-details .field-triage {
+        width: 2em;
+}
+
+.work-details .field-track {
+        width: 5em;
+}
+
+.work-details .field-item {
+        width: 20em;
+}
+
+.work-details .field-estimates {
+}
+
+.feasible-false td {
+        color: red;
+}
+
+.in-triage-true td:first-child {
+        border-left: 7px solid blue;
+} 

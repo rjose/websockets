@@ -1,4 +1,0 @@
-ID	Name	Estimate	Triage	Tags
------
-1	Do work item 1	Native:L,Web:M,Server:S,BB:2S	ProdTriage:1,EngTriage:2	track:Track1
-2	Do work item 2	Native:2L,Web:Q,Server:S,BB:S	Triage:1	track:Track2

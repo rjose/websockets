@@ -25,8 +25,8 @@ we'd do 'w1.tags.track = "money"'. To set the triage group, we'd do
 
 ]]--
 
-local Object = require('object')
-local func = require('functional')
+local Object = require('modules/object')
+local func = require('modules/functional')
 
 local Work = {}
 Work._new = Object._new
@@ -76,6 +76,10 @@ end
 
 function Work.triage_filter(triage_value, work_item)
         return work_item:merged_triage() == triage_value
+end
+
+function Work.downto_triage_filter(triage_value, work_item)
+        return work_item:merged_triage() <= triage_value
 end
 
 -- This is used to select select items that are 1-1.5, 2-2.5, etc.
@@ -146,7 +150,7 @@ function Work.translate_estimate(est_string)
         return scalar * units[unit]
 end
 
--- This converts the estimat table for a work item into a table with week
+-- This converts the estimate table for a work item into a table with week
 -- estimates as values.
 function Work:get_skill_demand()
         local result = {}
@@ -197,6 +201,40 @@ function Work.running_demand(work_items)
 	end
 
         return result
+end
+
+-- This is a helper function used to check if any skill values are < 0. Such a
+-- case implies an infeasible plan.
+function Work.is_any_skill_negative(skills)
+	local result = false
+	for skill, avail in pairs(skills) do
+		if avail < 0 then
+			result = true
+			break
+		end
+	end
+	return result
+end
+
+function Work.find_feasible_line(work_items, supply)
+        local feasible_line = #work_items
+        local demand_total, running_demand = Work.sum_demand(work_items)
+        local running_supply = {}
+	for i = 1,#running_demand do
+		running_supply[#running_supply+1] = Work.subtract_skill_demand(
+                        supply,
+                        running_demand[i]
+                )
+	end
+
+	for i = 1,#running_supply do
+		if Work.is_any_skill_negative(running_supply[i]) then
+			feasible_line = i - 1
+			break
+		end
+	end
+
+	return feasible_line, running_demand, running_supply
 end
 
 

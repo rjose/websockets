@@ -11,7 +11,7 @@ that can be taken on by a team.
 
 ]]--
 
-local Object = require('object')
+local Object = require('modules/object')
 
 local Person = {}
 Person._new = Object._new
