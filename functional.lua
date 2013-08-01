@@ -32,7 +32,7 @@ end
 function func.get_table_keys(t)
 	local result = {}
 	for k, _ in pairs(t) do
-		result[#result+1] = k
+		result[#result+1] = k .. ""
 	end
 	return result
 end
@@ -65,6 +65,7 @@ function func.subtract(w1, w2)
 	return w1 - w2
 end
 
+
 function func.concat(...)
         local arrays = {...}
         local result = {}
@@ -91,5 +92,30 @@ function func.split_at(n, a)
         end
         return result1, result2
 end
+
+-- Groups items into buckets defined by applying "get_bucket" to each one
+function func.group_items(items, get_bucket)
+	local groupings = {}
+
+        for _, item in ipairs(items) do
+		local bucket = get_bucket(item) .. ""
+		if not bucket then
+			bucket = "??"
+		end
+
+                -- Put stuff into the bucket list :-)
+		groupings[bucket] = groupings[bucket] or {}
+                local bucket_list = groupings[bucket]
+		bucket_list[#bucket_list+1] = item
+	end
+
+	-- Sort buckets
+	local bucket_names = func.get_table_keys(groupings)
+	table.sort(bucket_names)
+
+        return groupings, bucket_names
+end
+
+
 
 return func

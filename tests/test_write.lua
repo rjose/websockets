@@ -17,7 +17,10 @@ function TestWrite:setUp()
                 work[id] = Work.new{
                         id = id,
                         name = "Task" .. i,
-                        tags = {["track"] = "Saturn", ["pri"] = 1},
+                        triage = {["ProdTriage"] = 1,
+                                  ["EngTriage"] = 2,
+                                  ["Triage"] = 1},
+                        tags = {["track"] = "Saturn"},
                         estimates = {
                                 ["Native"] = "L",
                                 ["Web"] = "M",
@@ -26,9 +29,7 @@ function TestWrite:setUp()
                         }
                 }
         end
-        work['1'].tags.pri = 2
         work['1'].tags.track = 'Penguin'
-        work['4'].tags.pri = 2
         work['4'].tags.track = 'Penguin'
 
         self.work = work

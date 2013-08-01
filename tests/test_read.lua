@@ -58,9 +58,13 @@ function TestRead:test_readWork()
 		assertEquals(work[i].name, expected_names[i])
 	end
 
+        -- Check triage
+        assertEquals(work[1].triage.ProdTriage, 1)
+        assertEquals(work[1].triage.EngTriage, 2)
+
         -- Check tags
         assertEquals(work[1].tags.track, "Track1")
-        assertEquals(work[1].tags.priority, 1)
+        assertEquals(work[2].tags.track, "Track2")
 
 	local estimates = work[1]:get_skill_demand()
 	assertEquals(estimates["Web"], 2)

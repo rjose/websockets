@@ -33,12 +33,16 @@ Work._new = Object._new
 
 function Work.new(options)
 	id = options.id or ""
+        triage = options.triage or {}
 	estimates = options.estimates or {}
         name = options.name or ""
 	tags = options.tags or {}
 
-	return Work:_new{id = id .. "", name = name,
-	                 estimates = estimates, tags = tags}
+	return Work:_new{id = id .. "",
+                         name = name,
+	                 estimates = estimates,
+	                 triage = triage,
+                         tags = tags}
 end
 
 
@@ -49,6 +53,69 @@ function Work:set_estimate(skill_name, estimate_string)
 	end
 
  	self.estimates[skill_name] = estimate_string
+end
+
+-- HELPER FUNCTIONS -----------------------------------------------------------
+-- 
+
+-- This is a helper function that essentially maps "get_id" over a set of work
+-- items. This is necessary when we need to work with actual work IDs rather
+-- than work rankings.
+function Work.get_ids(work_items)
+	local result = {}
+	for i = 1,#work_items do
+		result[#result+1] = work_items[i].id
+	end
+	return result
+end
+
+
+
+-- TRIAGING FUNCTIONS ---------------------------------------------------------
+--
+
+function Work.triage_filter(triage_value, work_item)
+        return work_item:merged_triage() == triage_value
+end
+
+-- This is used to select select items that are 1-1.5, 2-2.5, etc.
+function Work.triage_xx_filter(triage_value, work_item)
+        local triage = work_item:merged_triage()
+
+        if type(triage) ~= "number" then
+                return false
+        end
+
+        return triage >= triage_value and triage < triage_value + 1
+end
+
+
+-- If triage_tag is not specified, this sets the "Triage" field in triage
+function Work:set_triage(val, triage_tag)
+        triage_tag = triage_tag or "Triage"
+        self.triage[triage_tag] = val
+end
+
+-- Returns the merged triage across all fields. We take the highest priority
+-- across all of the triage fields. Setting "Triage" overrides all other
+-- values.
+function Work:merged_triage()
+        if self.triage.Triage then
+                return self.triage.Triage
+        end
+
+        local min = 100
+
+        for k, val in pairs(self.triage) do
+                print(k, val)
+                if val < min then
+                        min = val
+                end
+        end
+        print("merged_triage", min)
+        if min == 100 then min = nil end
+
+        return min
 end
 
 

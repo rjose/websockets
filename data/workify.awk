@@ -6,12 +6,12 @@
 
 BEGIN {
         FS = "\t";
-        print("ID\tName\tEstimate\tTags");
+        print("ID\tName\tEstimate\tTriage\tTags");
         print("-----");
 }
 
 NR > 1        {printf("%d\t%s\tNative:%s,Web:%s,Apps:%s\t"\
-               "ProdTriage:%d,EngTriage:%d,Triage:%d,track:%s,Description:%s,"\
+               "ProdTriage:%s,EngTriage:%s,Triage:%s\ttrack:%s,Description:%s,"\
                "RequestingTeam:%s,Dependencies:%s,Notes:%s\n",\
                           NR-1, $5, $10, $11, $12,\
                           $1, $2, $3, $4, $6,\

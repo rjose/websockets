@@ -24,6 +24,8 @@ function TestPlan:setUp()
         end
         work['1'].tags.pri = 2
         work['1'].tags.track = 'Penguin'
+        work['1'].tags.pm = 'John'
+        work['2'].tags.pm = 'John'
         work['4'].tags.pri = 2
         work['4'].tags.track = 'Penguin'
 
@@ -48,15 +50,15 @@ end
 -- This lets us check expected vs actual rankings. We only compare by IDs. We
 -- do string comparisons so we can compare the complete ranking mismatches all
 -- at once.
-function TestPlan.check_rankings(ranked_items, expected_rankings)
+function TestPlan.check_ids(ranked_items, expected_ids)
         local ranked_string = ""
         for i = 1,#ranked_items do
                 ranked_string = ranked_string .. ranked_items[i].id
         end
 
         local expected_string = ""
-        for i = 1,#expected_rankings do
-                expected_string = expected_string .. expected_rankings[i]
+        for i = 1,#expected_ids do
+                expected_string = expected_string .. expected_ids[i]
         end
 
         assertEquals(ranked_string, expected_string)
@@ -64,13 +66,44 @@ end
 
 
 
+-- TEST FILTERS ---------------------------------------------------------------
+--
+
+function TestPlan:test_singleFilter()
+	local expected_ids = {1, 4}
+        local my_filter = function(work_item)
+                return work_item.tags.track == 'Penguin'
+        end
+	local work_items = self.plan:get_work_items({["filter"] = my_filter})
+        TestPlan.check_ids(work_items, expected_ids)
+end
+
+function TestPlan:test_multipleFilters()
+	local expected_ids = {1}
+        local my_filter = function(work_item)
+                return work_item.tags.track == 'Penguin'
+        end
+        local my_filter2 = function(work_item)
+                return work_item.tags.pm == 'John'
+        end
+	local work_items = self.plan:get_work_items({["filter"] = {my_filter, my_filter2}})
+        TestPlan.check_ids(work_items, expected_ids)
+end
+
+function TestPlan:test_noFilter()
+	local work_items = self.plan:get_work_items({["filter"] = {}})
+        assertEquals(10, #work_items)
+end
+
+-- TODO: Test some work filters (more for illustration and documentation)
+
 -- TESTING WORK ABOVE CUTLINE -------------------------------------------------
 --
 
 function TestPlan:test_workAboveCutline()
-	local expected_rankings = {1, 2, 3, 4, 5}
+	local expected_ids = {1, 2, 3, 4, 5}
 	local ranked_items = self.plan:get_work_items({["ABOVE_CUT"] = 1})
-        TestPlan.check_rankings(ranked_items, expected_rankings)
+        TestPlan.check_ids(ranked_items, expected_ids)
 end
 
 function TestPlan:test_demandAboveCutline()
@@ -110,66 +143,66 @@ end
 --
 
 function TestPlan:test_initialRankings()
-        local expected_rankings = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+        local expected_ids = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
         local ranked_items = self.plan:get_work_items()
-        TestPlan.check_rankings(ranked_items, expected_rankings)
+        TestPlan.check_ids(ranked_items, expected_ids)
 end
 
 function TestPlan:test_applyRanking1()
-        local expected_rankings = {7, 8, 9, 1, 2, 3, 4, 5, 6, 10}
+        local expected_ids = {7, 8, 9, 1, 2, 3, 4, 5, 6, 10}
         self.plan:rank({7, 8, 9})
         local ranked_items = self.plan:get_work_items()
-        TestPlan.check_rankings(ranked_items, expected_rankings)
+        TestPlan.check_ids(ranked_items, expected_ids)
 end
 
 -- Edge case: rank items already ranked
 function TestPlan:test_applyRanking2()
-        local expected_rankings = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+        local expected_ids = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
         self.plan:rank({1, 2, 3})
         local ranked_items = self.plan:get_work_items()
-        TestPlan.check_rankings(ranked_items, expected_rankings)
+        TestPlan.check_ids(ranked_items, expected_ids)
 end
 
 -- Edge case: idempotency of ranking
 function TestPlan:test_applyRanking3()
-        local expected_rankings = {7, 8, 9, 1, 2, 3, 4, 5, 6, 10}
+        local expected_ids = {7, 8, 9, 1, 2, 3, 4, 5, 6, 10}
         self.plan:rank({7, 8, 9})
         self.plan:rank({7, 8, 9})
         local ranked_items = self.plan:get_work_items()
-        TestPlan.check_rankings(ranked_items, expected_rankings)
+        TestPlan.check_ids(ranked_items, expected_ids)
 end
 
 -- Set rank of a set of items at a position
 function TestPlan:test_applyRanking4()
-        local expected_rankings = {1, 2, 3, 7, 8, 9, 4, 5, 6, 10}
+        local expected_ids = {1, 2, 3, 7, 8, 9, 4, 5, 6, 10}
         self.plan:rank({7, 8, 9}, {at = 4})
         local ranked_items = self.plan:get_work_items()
-        TestPlan.check_rankings(ranked_items, expected_rankings)
+        TestPlan.check_ids(ranked_items, expected_ids)
 end
 
 -- Ranking at one position and then at another
 function TestPlan:test_applyRanking5()
-        local expected_rankings = {1, 3, 2, 7, 8, 9, 4, 5, 6, 10}
+        local expected_ids = {1, 3, 2, 7, 8, 9, 4, 5, 6, 10}
         self.plan:rank({7, 8, 9}, {at = 4})
         self.plan:rank({3, 2}, {at = 2})
         local ranked_items = self.plan:get_work_items()
-        TestPlan.check_rankings(ranked_items, expected_rankings)
+        TestPlan.check_ids(ranked_items, expected_ids)
 end
 
 -- Edge case: Ranking items at end of unchanged items
 function TestPlan:test_applyRanking6()
-        local expected_rankings = {4, 5, 6, 7, 8, 9, 10, 2, 1, 3}
+        local expected_ids = {4, 5, 6, 7, 8, 9, 10, 2, 1, 3}
         self.plan:rank({2, 1, 3}, {at = 8})
         local ranked_items = self.plan:get_work_items()
-        TestPlan.check_rankings(ranked_items, expected_rankings)
+        TestPlan.check_ids(ranked_items, expected_ids)
 end
 
 -- Edge case: Rank non-contiguous items
 function TestPlan:test_applyRanking7()
-        local expected_rankings = {1, 3, 5, 2, 4, 10, 6, 7, 8, 9}
+        local expected_ids = {1, 3, 5, 2, 4, 10, 6, 7, 8, 9}
         self.plan:rank({2, 4, 10, 6}, {at = 4})
         local ranked_items = self.plan:get_work_items()
-        TestPlan.check_rankings(ranked_items, expected_rankings)
+        TestPlan.check_ids(ranked_items, expected_ids)
 end
 
 

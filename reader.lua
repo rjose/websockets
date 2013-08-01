@@ -104,14 +104,17 @@ end
 -- READING WORK OBJECTS -------------------------------------------------------
 --
 function construct_work(str)
-	local id, name, estimate_str, tags_str = unpack(str:split("\t"))
+	local id, name, estimate_str, triage_str, tags_str =
+                                                         unpack(str:split("\t"))
 
         local estimates = Reader.parse_tags(estimate_str) 
+        local triage = Reader.parse_tags(triage_str) 
         local tags = Reader.parse_tags(tags_str)
 
 	local result = Work.new{
 		id = id,
 		name = name,
+                triage = triage,
 		estimates = estimates,
                 tags = tags
 	}

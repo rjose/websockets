@@ -73,12 +73,37 @@ function is_any(work_item)
 	return true
 end
 
+function apply_filter(filter, item)
+        -- Case 1: filter is nil
+        if filter == nil then return true end
+
+        -- Case 2: filter is a single function
+        if type(filter) == "function" then
+                return filter(item)
+        end
+
+        -- Case 3: array of filters
+        if type(filter) == "table" then
+                local result = true
+                for _, f in ipairs(filter) do
+                        result = result and f(item)
+                end
+                return result
+        end
+
+        -- Case 4: Something else
+       io.stderr:write("Unknown filter type to apply_filter\n") 
+       return nil
+end
+
 -- By default, this returns _all_ of the work items of a plan. These are actual
 -- work item objects. Passing in options enables filtering of the work items.
 -- Here are the available options:
 --
 --      ABOVE_CUT: If set to truthy value, only work above the cutline will be
---      returned
+--                 returned
+--      filter:    Can be a function or array of functions. If set, this applies
+--                 the filter to the results 
 --
 function Plan:get_work_items(options)
 	local work_ids = self.work_items or {}
@@ -90,6 +115,7 @@ function Plan:get_work_items(options)
         -- If specified, return work items above the cutline
         if options.ABOVE_CUT then
                 stop_index = self.cutline
+                if stop_index > #work_ids then stop_index = #work_ids end
         end
 
 	-- Specify filter
@@ -102,7 +128,7 @@ function Plan:get_work_items(options)
 
         for i = 1, stop_index do
 		local w = self.work_table[work_ids[i]]
-		if filter(w) then
+		if apply_filter(filter, w) then
 			w.rank = i
 			result[#result+1] = w
 		end

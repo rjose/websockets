@@ -1,0 +1,155 @@
+QPlan v2
+========
+Rino Jose <@rjose>
+v1, Jun 20, 2013: Initial spec
+
+Drafting effort [X][X][]
+
+
+How the quarterly planning process should work
+----------------------------------------------
+. A program manager creates a spreadsheet with the following columns: product
+priority, engineering priority, merged priority, track, work name, work
+description, notes, and a column each for relevant skills required.
+
+. Product managers add rows for each feature/work item they want for their
+products. They fill out product priority, track, work name, description. Product
+priority is for triaging and should be 1, 2, or 3.
+
+. Engineering managers and tech leads add skill estimates for each work item.
+They should use a t-shirt sizing system (S = 1wk, M = 2wk, L = 3wk, Q=13wk). The
+estimates may be multiplied by an integer factor (e.g., 4L = 12 wk). This can be
+used to convey that multiple people are involved or the work must be done for
+multiple platforms.
+
+. Other work items should be added here as well. This includes requests from
+other groups (Operations, Marketing, other product teams). It also includes
+estimates for vacation, sustaining support, and initiatives like blogging and
+presenting at meetups/conferences.
+
+. After this, Engineering managers should enter engineering priorities  for work
+items. Similar to product priority, these values should be 1, 2, or 3.
+
+. Next, a program manager takes this data and runs it through QPlan to get total
+demand estimates by combined product/engineering triage. The "merged triage" is
+taken to be the higher of either the engineering or product triage; if the
+merged triage is explicitly specified, this should be used instead. These
+results should be added to a separate "resource demand" tab in the spreadsheet.
+
+. The heads of Product and Engineering should then review the updated
+spreadsheet and take a second triage pass. During this pass, they explicitly set
+the merged priority of each item, using 1.5 and 2.5 to subdivide the main triage
+groups as needed.
+
+. A program manager takes this data and runs it through QPlan to do a rough
+ranking by merged triage and to recompute the resource demand by merged triage.
+All 1s are in a group; all 1.5s and 2s are in a group; all 2.5s and 3s are in a
+group. The program manager uses QPlan to update the planning spreadsheet, adding
+a separate tab showing resource asks by track and merged triage.
+
+. A larger quarterly planning meeting is held to review the initial plan. The
+goal is to discuss any items that people feel are mis-prioritized. QPlan can be
+used to drill down and help make tradeoff decisions here. The following QPlan
+views will be useful:
+
+    - Global ranked list by items showing feasible line and cutline
+    - Ranked lists by track showing items above and below cutline as well as
+      resource asks for items above cutline.
+    - Resource list showing people by skill as well as resource supply totals
+
+. Once a feasible plan is in place, engineering managers should assign people to
+tracks for the quarter.
+
+Thoughts on QPlan v1
+--------------------
+The v1 of this tool was used on Jun 19, 2013 as part of Q3 planning. Some
+features of the tool worked as expected. Some features went unused. And some new
+feature requirements became evident.
+
+One thing I didn't fully appreciate was the need to be very flexible. People
+want to filter by different things and come up with new filters they want to
+try. People want to slice data in different ways, sometimes showing detail,
+sometimes just showing summaries. I think the QPlan core functions should
+support this better. We may need the concept of an "environment" where we can
+configure global settings (like current filter, details/no details, etc.).
+
+Another observation is that we have a real spreadsheet with real data in it now.
+We should use this to unit test parts of QPlan v2.
+
+Something that worked architecturally was to separate QPlan into a part that was
+more solid and wouldn't change (a QPlan module) and a part that was more hacky
+(the shell functions). The shell functions were written on demand and filled
+gaps and torqued the QPlan code in ways that the team needed. Some of these
+tweaks should make their way back into the QPlan module. Part of QPlan v2 will be
+redesigning the QPlan module based on what I learned from Q3 planning and to
+incorporate and better support some of the shell function tweaks.
+
+Some things were unused (triaging work from the app, ranking work in the app,
+estimating work from the app, exporting the spreadsheet data back out).
+
+v2 Implementation
+------------------
+We'll do TDD and follow this rough plan:
+
+.Make triage columns explicit [X][X][X][]
+We'll redesign Work so that triage is a "first class field" separate from the
+other tags. We'll support "1.5" and "2.5" values consistently. We'll add some
+explicit functions for filtering by triage and for merging triage columns.
+
+We'll start by bringing the work tests over and splitting the triage columns
+out. OK, work.lua is done. Let's make sure our reading, writing, and export
+work properly.
+
+.Support filtering better [X][X][][][][]
+I want to support the combining of filters better. It should be able to get all
+items from a certain track and with a certain triage level. In writing the
+actual tests, we'll figure out what policies make the most sense. I also want to
+set/clear a globally default filter (maybe even have an array of filters?). We
+might want to make filters into proper objects.
+
+Anything that takes a filter should also take an array of filters.  Filters
+are typically applied to selecting work from plans. I need to make sure that I
+clean up all the hackiness that was added during planning.  Let's start by
+testing that Plan:get_work_items can take a filter or array of filters. Done.
+
+I think we'll also want to add tests to test_work to exercise the specific
+work filters individually.
+
+
+.Support dynamic slicing of data [X][X][][][][][]
+This will provide something similar to what pivot tables can do. We need to
+slice by track and triage. We want to sometimes show detail and sometimes just
+summary info. The data needs to be in a form that we can render to a console or
+to JSON for external client consumption.
+
+Let's examine the rbt function and see what we can tease out. We pass in a
+triage value to filter the work items against. Instead of this, we should pass
+in a filter/array of filters. The track filter is useful. We should have it
+just filter on the track. After applying the filters, we separate the work by
+track. It seems like we should be able to pass in a function that maps the
+work item to the key we want to slice on. Let's see if we can get this to
+work. Done.
+
+.Clean up shell functions [X][X][][][][]
+We should move some of the shell functions into the QPlan module. We should also
+factor many of these functions into other functions that focus on data retrieval
+or data render. The main purpose of the shell functions should be to interface
+with spreadsheet data and add custom functionality (which may make its way back
+to the QPlan module).
+
+Let's also add some global filters to the shell functions. No tests on these.
+
+.Stronger tests [][][][]
+We should use the Q3 spreadsheet to help develop stronger, more realistic unit
+tests. First, let's start by making sure all the tests run...Done. Now, let's
+review the spreadsheet data to see if anything weird should be tested.
+
+.Better support for exporting results [][][][]
+Slicing data and exporting it back to the spreadsheet was awkward. I need some
+better support here, especially how it ties into the dynamic slicing. This should
+require a single export to file and a single import into the spreadsheet. This
+will speed things up *a lot*.
+
+Alright, let's use the group_items function that we wrote above and then see
+if we can tease out a function to print by columns. I think we want to group
+items by triage first and then by track.

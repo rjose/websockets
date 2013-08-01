@@ -68,15 +68,16 @@ function Writer.write_work(work_items, filename)
 	local file = assert(io.open(filename, "w"))
 
 	-- Write headers first
-	file:write("ID\tName\tTrack\tTags\n")
+	file:write("ID\tName\tEstimate\tTriage\tTags\n")
 	file:write("-----\n")
 
 	-- Write work next
 	for _, w in pairs(work_items) do
-		file:write(string.format("%s\t%s\t%s\t%s\n", 
+		file:write(string.format("%s\t%s\t%s\t%s\t%s\n", 
 			w.id,
                         w.name,
                         tags_to_string(w.estimates),
+                        tags_to_string(w.triage),
                         tags_to_string(w.tags)
 		))
 	end

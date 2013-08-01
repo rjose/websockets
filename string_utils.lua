@@ -38,4 +38,20 @@ function string_utils.join(items, sep)
 	return result
 end
 
+function string:truncate(l, options)
+        if self:len() <= l then
+                return self
+        end
+
+        options = options or {}
+        result = self:sub(1, l)
+        
+        if options.ellipsis then
+                result = result:sub(1, -4) .. "..."
+        end
+
+
+        return result
+end
+
 return string_utils

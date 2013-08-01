@@ -7,7 +7,9 @@ TestWork = {}
 function TestWork:setUp()
         self.work = {}
         self.work[1] = Work.new{name = "Do work item 1",
-                                track = "Track1",
+                                triage = {["ProdTriage"] = 1,
+                                          ["EngTriage"] = 2,
+                                          ["Triage"] = 1},
 				tags = {["track"] = "Track1",
 				        ["PP"] = 1,
                                         ["EP"] = 2},
@@ -19,6 +21,8 @@ function TestWork:setUp()
         -- Add a few more work items
         for i = 2, 4 do
                 self.work[i] = Work.new{name = "Task" .. i,
+                                triage = {["ProdTriage"] = 1,
+                                          ["EngTriage"] = 2},
 				tags = {["track"] = "Track1",
 				        ["PP"] = 2,
                                         ["EP"] = 3},
@@ -28,8 +32,84 @@ function TestWork:setUp()
                                              ["BB"] = "S"}}
         end
 
+        -- Set up work with different triage levels
+        levels = {1, 1.5, 2, 2.5, 3, 3.5}
+        self.triaged_work = {}
+        for i, triage in ipairs(levels) do
+                self.triaged_work[i] = Work.new{name = "TWork" .. i,
+                                                triage = {["Triage"] = triage}
+                                       }
+        end
+
 end
 
+-- TRIAGE TESTS ---------------------------------------------------------------
+--
+
+function TestWork:test_getTriageData()
+        assertEquals(self.work[1].triage.ProdTriage, 1)
+
+        self.work[1]:set_triage(2)
+        assertEquals(self.work[1].triage.Triage, 2)
+        
+        self.work[1]:set_triage(1, "OpsTriage")
+        assertEquals(self.work[1].triage.OpsTriage, 1)
+end
+
+function TestWork:test_mergeTriage()
+        local work
+        work = Work.new{name = "work",
+                        triage = {["ProdTriage"] = 1,
+                                  ["EngTriage"] = 2}
+        }
+
+        assertEquals(work:merged_triage(), 1)
+
+        -- Test more than 2 triage
+        work = Work.new{name = "work",
+                        triage = {["ProdTriage"] = 3,
+                                  ["EngTriage"] = 3,
+                                  ["OpsTriage"] = 2}
+        }
+        assertEquals(work:merged_triage(), 2)
+
+        -- Test specified Triage
+        work = Work.new{name = "work",
+                        triage = {["ProdTriage"] = 1,
+                                  ["EngTriage"] = 1,
+                                  ["Triage"] = 3}
+        }
+        assertEquals(work:merged_triage(), 3)
+        
+        -- Test 1.5
+        work = Work.new{name = "work",
+                        triage = {["ProdTriage"] = 1.5,
+                                  ["EngTriage"] = 2,
+                                  ["OpsTriage"] = 3}
+        }
+        assertEquals(work:merged_triage(), 1.5)
+end
+
+-- FILTER TESTS ---------------------------------------------------------------
+--
+
+-- This tests that we can filter on the main categories 1, 2, 3
+function TestWork:test_filterTriage1()
+        -- The triaged_work items have the following Triage values:
+        --      {1, 1.5, 2, 2.5, 3, 3.5}
+        assertEquals(true, Work.triage_filter(1, self.triaged_work[1]))
+        assertEquals(false, Work.triage_filter(1, self.triaged_work[2]))
+        assertEquals(true, Work.triage_filter(1.5, self.triaged_work[2]))
+end
+
+-- This tests that we can filter on subcategories 1-1.5, 2-2.5, 3-3.5
+function TestWork:test_filterTriage1()
+        -- The triaged_work items have the following Triage values:
+        --      {1, 1.5, 2, 2.5, 3, 3.5}
+        assertEquals(true, Work.triage_xx_filter(1, self.triaged_work[1]))
+        assertEquals(true, Work.triage_xx_filter(1, self.triaged_work[2]))
+        assertEquals(false, Work.triage_xx_filter(1, self.triaged_work[3]))
+end
 
 -- ESTIMATE TESTS -------------------------------------------------------------
 --
@@ -105,7 +185,6 @@ function TestWork:test_runningDemand()
         assertEquals(#totals, #expected)
         for i = 1,#expected do
                 for skill, value in pairs(expected[i]) do
-                        print(skill, totals[i][skill], value)
                         assertEquals(totals[i][skill], value)
                 end
         end

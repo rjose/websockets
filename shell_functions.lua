@@ -5,6 +5,12 @@ Reader = require('reader')
 Writer = require('writer')
 func = require('functional')
 
+require('string_utils')
+
+-- Global environment
+env = {}
+env.summaries = true
+
 -- TODO: Talk about naming conventions
 
 -- READ/WRITE DATA ------------------------------------------------------------
@@ -72,9 +78,9 @@ function export()
                 work = pl.work_table[work_id]
                 file:write(string.format("%s\t%s\t%s\t%s\t%s\t" ..
                      "%s\t%s\t%s\t\t%s\t%s\t%s\t%s\n", 
-                           tagvalue_to_string(work.tags.ProdTriage),
-                           tagvalue_to_string(work.tags.EngTriage),
-                           tagvalue_to_string(work.tags.Triage),
+                           tagvalue_to_string(work.triage.ProdTriage),
+                           tagvalue_to_string(work.triage.EngTriage),
+                           tagvalue_to_string(work.triage.Triage),
                            work.tags.track,
                            work.name,
 
@@ -110,121 +116,27 @@ function pw(work_items)
 	for i = 1,#work_items do
 		local w = work_items[i]
 		local rank = w.rank or "--"
-		print(string.format("#%-4s\t%3s\t%20s\t%s", rank, w.id, w.name,
+		print(string.format("#%-4s\t%3s\t%20s\t%s\t%s", rank, w.id, w.name,
+                        Writer.tags_to_string(w.triage),
 			Writer.tags_to_string(w.tags)))
 	end
 end
 
 
--- TRIAGING WORK ITEMS --------------------------------------------------------
---
--- TODO: Explain triaging a bit more
---
-
--- This is an internal helper function to support different types of work
--- triage. Can take either a single rank or an array of ranks.
-function triage_work(rank, level, tag_key)
-        local ranks = {}
-        if type(rank) == "table" then
-                ranks = rank
-        else
-                ranks = {rank}
-        end
-
-        for _, ranking in ipairs(ranks) do
-                local work = r(ranking)
-                if work then
-                        work.tags[tag_key] = level
-                end
-        end
-end
-
--- Triage work for Product
-function twp(rank, level)
-	triage_work(rank, level, 'ProdTriage')
-end
-
--- Triage work for Engineering
-function twe(rank, level)
-	triage_work(rank, level, 'EngTriage')
-end
-
--- Triage work (overall)
-function tw(rank, level)
-	triage_work(rank, level, 'Triage')
-end
 
 
--- TRIAGE FILTERS -------------------------------------------------------------
--- These are used for filtering work items by triage grouping.
+
+-- WORK SELECTION -------------------------------------------------------------
+-- These functions are used to select work items.
 --
 
-function is_triage1(work_item)
-	local value = work_item.tags.Triage
-	if not value then value = 100 end
-	return (value >= 1) and (value < 2)
-end
-
-function is_triage2(work_item)
-	local value = work_item.tags.Triage
-	if not value then value = 100 end
-	return (value >= 2) and (value < 3)
-end
-
-function is_prod_triage1(work_item)
-	local value = work_item.tags.ProdTriage
-	if not value then value = 100 end
-	return (value >= 1) and (value < 2)
-end
-
-function is_prod_triage2(work_item)
-	local value = work_item.tags.ProdTriage
-	if not value then value = 100 end
-	return (value >= 2) and (value < 3)
-end
-
-function is_eng_triage1(work_item)
-	local value = work_item.tags.EngTriage
-	if not value then value = 100 end
-	return (value >= 1) and (value < 2)
-end
-
-function is_eng_triage2(work_item)
-	local value = work_item.tags.EngTriage
-	if not value then value = 100 end
-	return (value >= 2) and (value < 3)
-end
-
-function is_above_cutline(work_item)
+function above_cutline_filter(work_item)
 	if not work_item.rank then
 		return false
 	else
 		return work_item.rank <= pl.cutline
 	end
 end
-
--- Returns true if there's a conflict between the Eng and Product 1 priorities
-function is_conflict1(work_item)
-	local prod_triage = work_item.tags.ProdTriage
-	local eng_triage = work_item.tags.EngTriage
-
-	if (prod_triage == 1) and (eng_triage == nil) then
-		return false
-	elseif (prod_triage == 1) and (eng_triage ~= 1) then
-		return true
-	elseif (prod_triage == nil) and (eng_triage == 1) then
-		return false
-	elseif (prod_triage ~= 1) and (eng_triage == 1) then
-		return true
-	else
-		return false
-	end
-end
-
-
--- WORK SELECTION -------------------------------------------------------------
--- These functions are used to select work items.
---
 
 -- Selects all "work above cutline"
 function wac()
@@ -251,80 +163,49 @@ end
 
 
 -- Returns all work items whose Triage value is 1
-function w1()
-	return pl:get_work_items{["filter"] = is_triage1}
-end
-
--- Returns all work items whose Triage value is 1
-function w2()
-	return pl:get_work_items{["filter"] = is_triage2}
-end
-
--- Returns all work items whose ProdTriage value is 1
-function wprod1()
-	return pl:get_work_items{["filter"] = is_prod_triage1}
-end
-
--- Returns all work items whose ProdTriage value is 1
-function wprod2()
-	return pl:get_work_items{["filter"] = is_prod_triage2}
-end
-
 function wfilter(filter)
 	return pl:get_work_items{["filter"] = filter}
 end
 
--- Returns all work items whose EngTriage value is 1
-function weng1()
-	return pl:get_work_items{["filter"] = is_eng_triage1}
+function w1()
+        local f = function(work_item)
+                return Work.triage_xx_filter(1, work_item)
+        end
+        return wfilter(f)
 end
 
--- Returns all work items whose EngTriage value is 1
-function weng2()
-	return pl:get_work_items{["filter"] = is_eng_triage2}
+-- Returns all work items whose Triage value is 2
+function w2()
+        local f = function(work_item)
+                return Work.triage_xx_filter(2, work_item)
+        end
+        return wfilter(f)
 end
 
--- Returns all items where there is conflict between Prod and Eng over 1s
-function wc1()
-	return pl:get_work_items{["filter"] = is_conflict1}
+-- Returns all work items whose Triage value is 3
+function w2()
+        local f = function(work_item)
+                return Work.triage_xx_filter(3, work_item)
+        end
+        return wfilter(f)
 end
 
+-- Returns true if work is below cutline
+function wbc_filter(work_item)
+        -- Find rank in plan
+        work_rank = nil
+        for r, work_id in ipairs(pl.work_items) do
+                if work_id .. '' == work_item.id then
+                        work_rank = r
+                end
+        end
 
-
--- ESTIMATING WORK ------------------------------------------------------------
---
-
--- These are the various skill types we have
-SA = "Apps"
-SN = "Native"
-SW = "Web"
-SS = "SET"
-SU = "UX"
-SB = "BB"
-
--- Sets the estimate for a work item. This takes the rank of the work item in
--- question and a set of pairs of the form (skill, estimate).
-function est(rank, ...)
-	local work = r(rank)
-	if not work then
-		return
-	end
-
-	local est_pairs = table.pack(...)
-
-	if (#est_pairs % 2) == 1 then
-		io.stderr:write("Must have an even number of estimate pairs")
-		return
-	end
-
-	for i = 1, #est_pairs-1, 2 do
-		local skill = est_pairs[i]
-		local estimate = est_pairs[i+1]
-		work:set_estimate(skill, estimate)
-	end
-
+        if work_rank and work_rank > pl.cutline then
+                return true
+        else
+                return false
+        end
 end
-
 
 
 -- UPDATING THE PLAN ----------------------------------------------------------
@@ -354,25 +235,11 @@ function rank(work_items, position)
 	pl:rank(work_items, {["at"] = position})
 end
 
--- Add work
-function aw(name)
-	-- Add work to work_table
-	local new_id = num_work_items+1
-	local new_work = Work.new{
-		id = new_id .. "",
-		name = name
-	}
-	-- TODO: Maybe move this to a function to hide the current hackiness
-	num_work_items = num_work_items + 1
-	pl.work_table[new_work.id] = new_work
-
-	-- Add work to plan's ranked work_items
-	pl.work_items[#pl.work_items+1] = new_work.id
-end
 
 -- "triage sort". This just pulls all of the items Triaged to 1 to the top of the list
+-- This ranks items stably.
 function tsort()
-	-- Get IDs of all 1s
+	-- Get IDs of all 1s and 1.5s
 	local ids = get_ids(w1())
 	pl:rank(ids)
 end
@@ -384,15 +251,6 @@ end
 
 -- QPLAN REPORTS --------------------------------------------------------------
 --
-
--- "Report feasible line"
-function rfl()
-	local fl, demand, supply = pl:find_feasible_line()
-	-- TODO: Pretty this up
-	print(string.format("Feasible line: %d", fl))
-	print(string.format("Items below feasible line: %d", #pl.work_items-fl))
-	print(string.format("Cutline: %d", pl.cutline))
-end
 
 -- Converts skill_totals in man-weeks into num-people
 function to_num_people(skill_totals, num_weeks)
@@ -406,38 +264,22 @@ function to_num_people(skill_totals, num_weeks)
 	return skill_totals
 end
 
-function truncate(s, l, options)
-        if s:len() <= l then
-                return s
-        end
-
-        options = options or {}
-        result = s:sub(1, l)
-        
-        if options.ellipsis then
-                result = result:sub(1, -4) .. "..."
-        end
-
-
-        return result
-
-end
 
 -- "Report running totals"
 function rrt()
-	print(string.format("%-5s|%-9s|%-40s|%-30s|%-30s",
+	print(string.format("%-5s|%-15s|%-40s|%-30s|%-30s",
 		"Rank", "Track", "Item", "Estimate", "Supply left"))
-	print("-----|---------|----------------------------------------|" ..
+	print("-----|---------------|----------------------------------------|" ..
               "------------------------------|--------------------------")
 	local work = pl:get_work_items()
 	local feasible_line, _, supply_totals = pl:find_feasible_line()
 
 	for i = 1,#work do
 		local w = work[i]
-		print(string.format("%-5s|%-9s|%-40s|%-30s|%-30s",
+		print(string.format("%-5s|%-15s|%-40s|%-30s|%-30s",
 			"#" .. w.rank,
-			w.tags.track,
-			truncate(w.name, 40, {["ellipsis"] = true}),
+			w.tags.track:truncate(15),
+			w.name:truncate(40, {["ellipsis"] = true}),
 			Writer.tags_to_string(w.estimates),
 			Writer.tags_to_string(to_num_people(supply_totals[i], pl.num_weeks))
 		))
@@ -452,19 +294,20 @@ function rrt()
 	end
 end
 
-function make_track_filter(t, triage)
+
+-- Filters on one or more track labels
+function make_track_filter(t)
         local tracks = {}
         if type(t) == "table" then
                 tracks = t
         else
-                tracks[#tracks+1] = t
+                tracks[1] = t
         end
 
+        local result
         result = function(work_item)
                 for _, track in pairs(tracks) do
-                        if (work_item.tags.track:lower():find(track:lower()) and
-                            (triage == nil or
-                            (work_item.tags.Triage == triage))) then
+                        if (work_item.tags.track:lower():find(track:lower())) then
                                 return true
                         end
                 end
@@ -474,76 +317,96 @@ function make_track_filter(t, triage)
         return result
 end
 
+function get_track(work_item)
+        return work_item.tags.track
+end
 
--- TODO: Add filter by triage
--- "Report by track". Takes an optional track or array of tracks.
-function rbt(t, triage)
-        -- Construct options
-        local options = {}
-        if t then
-                options.filter = make_track_filter(t, triage)
-        end
-
-	-- Identify tracks, and put work into tracks
-	local work = pl:get_work_items(options)
-	local track_hash = {}
-	for i = 1,#work do
-		local track = work[i].tags.track
-		if not track then
-			track = "<no track>"
-		end
-
-		track_hash[track] = track_hash[track] or {}
-		local work_array = track_hash[track]
-		work_array[#work_array+1] = work[i]
-	end
-
-	-- Sort track tags
-	local track_tags = func.get_table_keys(track_hash)
-	table.sort(track_tags)
-
-	for j = 1,#track_tags do
+function print_work_by_grouping(groupings, work_hash)
+	for j = 1,#groupings do
 		local cutline_shown = false
-		local track = track_tags[j]
-		local track_items = track_hash[track]
+		local group = groupings[j]
+		local group_items = work_hash[group]
 
-		-- Sum the track items
-		local demand = Work.sum_demand(func.filter(track_items, is_above_cutline))
+		-- Sum the group items
+		local demand = Work.sum_demand(func.filter(group_items, above_cutline_filter))
 		local demand_str = Writer.tags_to_string(
 			to_num_people(demand, pl.num_weeks), ", ")
 
-		print("== " .. track)
+		print("== " .. group)
 
-		print(string.format("     %-5s|%-40s|%6s|", "Rank", "Item", "Triage"))
-		print("     -----|----------------------------------------|" ..
-                      "----------|")
-		for i = 1,#track_items do
-			local w = track_items[i]
-			if w.rank > pl.cutline and cutline_shown == false then
-				print("     ----- CUTLINE -----------")
-				cutline_shown = true
-			end
-			print(string.format("     %-5s|%-40s|%-10s|%s",
-				"#" .. w.rank,
-				truncate(w.name, 40, {["ellipsis"] = true}),
-				w.tags.Triage,
-                                Writer.tags_to_string(w.estimates, ", ")))
-		end
-		print("     ---------------------------------")
-		print(string.format("     Required people: %s", demand_str))
-		print()
+                if env.summaries then
+                        print(string.format("     %-5s|%-40s|%6s|", "Rank", "Item", "Triage"))
+                        print("     -----|----------------------------------------|" ..
+                              "----------|")
+                        for i = 1,#group_items do
+                                local w = group_items[i]
+                                if w.rank > pl.cutline and cutline_shown == false then
+                                        print("     ----- CUTLINE -----------")
+                                        cutline_shown = true
+                                end
+                                print(string.format("     %-5s|%-40s|%-10s|%s",
+                                        "#" .. w.rank,
+                                        w.name:truncate(40, {["ellipsis"] = true}),
+                                        w:merged_triage(),
+                                        Writer.tags_to_string(w.estimates, ", ")))
+                        end
+                        print("     ---------------------------------")
+                end
+                print(string.format("     Required people: %s", demand_str))
+                print()
 	end
 
 
+end
+
+function rbt(t, triage)
+        -- Construct options
+        local options = {}
+        options.filter = {}
+
+        -- Make a track filter, if necessary
+        if t then
+                if type(t) == "number" then
+                        triage = t
+                else
+                        options.filter[#options.filter+1] = make_track_filter(t)
+                end
+        end
+
+        -- Make a triage filter, if necessary
+        if triage then
+                -- Check for 1 vs 1.5, e.g.
+                fractional_part = triage % 1
+                if fractional_part > 0 then
+                        options.filter[#options.filter+1] = function(work_item)
+                                return Work.triage_xx_filter(triage - fractional_part, work_item)
+                        end
+                else
+                        options.filter[#options.filter+1] = function(work_item)
+                                return Work.triage_filter(triage, work_item)
+                        end
+                end
+        end
+
+        -- Get relevant work
+	local work = pl:get_work_items(options)
+
+        -- Group work
+        local track_hash, track_tags = func.group_items(work, get_track)
+
+        -- Print work by grouping
+        print_work_by_grouping(track_tags, track_hash, options)
+
+
 	-- Print overall demand total
-	local total_demand = Work.sum_demand(func.filter(work, is_above_cutline))
+	local total_demand = Work.sum_demand(func.filter(work, above_cutline_filter))
 	print(string.format("%-30s %s", "TOTAL Required (for cutline):", Writer.tags_to_string(
 		to_num_people(total_demand, pl.num_weeks), ", "
 	)))
 
         -- If we're filtering the results, return now since there's no point in
         -- printing total supply stats.
-        if options.filter ~= nil then
+        if options.filter ~= {} then
                 return
         end
 	
@@ -558,12 +421,69 @@ function rbt(t, triage)
         -- total_bandwidth and total_demand to num people!
         local net_supply = Work.subtract_skill_demand(total_bandwidth, total_demand);
 	print(string.format("%-30s %s", "TOTAL Net Supply:", Writer.tags_to_string(net_supply, ", ")))
-        
+end
+
+-- Report below cutline
+function rbc(t, triage)
+        -- Construct options
+        local options = {}
+        options.filter = {}
+
+        -- Make a track filter, if necessary
+        if t then
+                if type(t) == "number" then
+                        triage = t
+                else
+                        options.filter[#options.filter+1] = make_track_filter(t)
+                end
+        end
+
+        -- Make a triage filter, if necessary
+        if triage then
+                -- Check for 1 vs 1.5, e.g.
+                fractional_part = triage % 1
+                if fractional_part > 0 then
+                        options.filter[#options.filter+1] = function(work_item)
+                                return Work.triage_xx_filter(triage - fractional_part, work_item)
+                        end
+                else
+                        options.filter[#options.filter+1] = function(work_item)
+                                return Work.triage_filter(triage, work_item)
+                        end
+                end
+        end
+
+        -- Filter by below cutline
+        options.filter[#options.filter+1] = wbc_filter
+
+        -- Get relevant work
+	local work = pl:get_work_items(options)
+
+        -- Group work
+        local track_hash, track_tags = func.group_items(work, get_track)
+
+        -- Print work by grouping
+        print_work_by_grouping(track_tags, track_hash, options)
+
+
+	-- Print overall demand total for work below cutline
+	local total_demand = Work.sum_demand(work)
+	print(string.format("%-40s %s", "TOTAL Required:", Writer.tags_to_string(
+		to_num_people(total_demand, pl.num_weeks), ", "
+	)))
+
+	-- Print supply left after doing above cutline
+	local total_above_cut_demand = Work.sum_demand(wac())
+        local total_bandwidth = Person.sum_bandwidth(ppl, pl.num_weeks)
+        local net_supply = Work.subtract_skill_demand(total_bandwidth, total_above_cut_demand);
+	print(string.format("%-40s %s", "TOTAL Supply (after cutline work):", Writer.tags_to_string(
+                to_num_people(net_supply, pl.num_weeks), ", ")))
 end
 
 function make_triage_filter(triage)
         result = function(work_item)
-		if work_item.tags.Triage == triage then
+		if work_item.tags.ProdTriage == triage or 
+                   work_item.tags.EngTriage == triage then
                 	return true
 		else
 			return false
@@ -574,119 +494,87 @@ function make_triage_filter(triage)
 end
 
 
-function rbts(prod_triage)
-        -- Construct options
-        local options = {}
-        if prod_triage then
-                options.filter = make_triage_filter(prod_triage)
-        end
-
-	-- Identify tracks, and put work into tracks
-	local work = pl:get_work_items(options)
-	local track_hash = {}
-	for i = 1,#work do
-		local track = work[i].tags.track
-		if not track then
-			track = "<no track>"
-		end
-
-		track_hash[track] = track_hash[track] or {}
-		local work_array = track_hash[track]
-		work_array[#work_array+1] = work[i]
-	end
-
-	-- Sort track tags
-	local track_tags = func.get_table_keys(track_hash)
-	table.sort(track_tags)
-
-	for j = 1,#track_tags do
-		local cutline_shown = false
-		local track = track_tags[j]
-		local track_items = track_hash[track]
-
-		-- Sum the track items
-		local demand = Work.sum_demand(func.filter(track_items, is_above_cutline))
-		local demand_str = Writer.tags_to_string(
-			to_num_people(demand, pl.num_weeks), ", ")
-
-		-- print(string.format('%s', track))
-		-- print("     ---------------------------------")
-		-- print(string.format("     Required people: %s", demand_str))
-                
-                
-	end
-
-
-	-- Print overall demand total
-	local total_demand = Work.sum_demand(func.filter(work, is_above_cutline))
-	print(string.format("%-30s %s", "TOTAL Required (for cutline):", Writer.tags_to_string(
-		to_num_people(total_demand, pl.num_weeks), ", "
-	)))
-
-	-- TODO: Figure out how to handle supply
-	
+function get_triage(work_item)
+        return work_item:merged_triage()
 end
 
-function rbte(prod_triage)
-        -- Construct options
-        local options = {}
-        if prod_triage then
-                options.filter = make_triage_filter(prod_triage)
-        end
+function print_by_triage_and_track(file, triage_tags, all_tracks, demand_hash)
+        for _, tri in ipairs(triage_tags) do
+                -- Print triage
 
-	-- Identify tracks, and put work into tracks
-	local work = pl:get_work_items(options)
-	local track_hash = {}
-	for i = 1,#work do
-		local track = work[i].tags.track
-		if not track then
-			track = "<no track>"
-		end
+                -- Print track column headings
+                file:write(string.format("Triage: %s\t", tri))
+                for _, track in ipairs(all_tracks) do
+                        file:write(string.format("%s\t", track))
+                end
+                file:write("\n")
 
-		track_hash[track] = track_hash[track] or {}
-		local work_array = track_hash[track]
-		work_array[#work_array+1] = work[i]
-	end
-
-	-- Sort track tags
-	local track_tags = func.get_table_keys(track_hash)
-	table.sort(track_tags)
-        local track_string = "" 
-        local demand_string_table = {}
-
-	for j = 1,#track_tags do
-		local track = track_tags[j]
-		local track_items = track_hash[track]
-
-		-- Sum the track items
-		local demand = Work.sum_demand(func.filter(track_items, is_above_cutline))
-		local demand_str = Writer.tags_to_string(
-			to_num_people(demand, pl.num_weeks), ", ")
-
-                track_string = track_string .. track .. "\t"
-		local demand_array = demand_str:split(", ")
-		for _, val in ipairs(demand_array) do
-                        local demand_pair = val:split(":")
-                        local d = demand_string_table[demand_pair[1]]
-                        if d then
-                                d = d .. demand_pair[2] .. "\t"
-                        else
-                                d = demand_pair[2] .. "\t"
+                -- Print Native values
+                for _, skill in ipairs{"Apps", "Native", "Web"} do
+                        file:write(string.format("%s\t", skill))
+                        for _, track in ipairs(all_tracks) do
+                                local val = demand_hash[tri][track][skill] or 0
+                                file:write(string.format("%.1f\t", val))
                         end
-                        demand_string_table[demand_pair[1]] = d
-		end
-	end
-
-        -- Print result and also export to rbte.txt
-        prod_triage = prod_triage or ""
-        local file = assert(io.open("./data/rbte" .. prod_triage .. ".txt", "w"))
-        file:write(string.format("%s\n", track_string))
-        print(track_string)
-        for t, s in pairs(demand_string_table) do
-                local str = string.format("%s\t%s\n", t, s)
-                file:write(str)
-                print(str)
+                        file:write("\n")
+                end
+		file:write("\n")
         end
+end
+
+-- This reports demand by triage and track and exports it to disk (to
+-- "export.txt")
+function rde()
+        -- 
+        -- Get work items and group by triage and by track
+        --
+	local work = pl:get_work_items()
+        local triage_hash, triage_tags = func.group_items(work, get_triage)
+
+        for _, t in ipairs(triage_tags) do
+                local track_hash, track_tags =
+                                     func.group_items(triage_hash[t], get_track)
+
+                -- Stuff track groupings back into triage_hash
+                triage_hash[t] = {track_hash, track_tags}
+        end
+
+        --
+        -- Get the union of all track tags
+        --
+        local all_tracks = {}
+        for _, t in ipairs(triage_tags) do
+                local track_tags = triage_hash[t][2]
+                for _, tag in ipairs(track_tags) do
+                        all_tracks[tag] = 1
+                end
+        end
+	all_tracks = func.get_table_keys(all_tracks)
+	table.sort(all_tracks)
+
+        --
+        -- Map work items into total demand
+        --
+        local demand_hash = {}
+        for _, tri in ipairs(triage_tags) do
+                demand_hash[tri] = demand_hash[tri] or {}
+                for _, track in ipairs(all_tracks) do
+                        demand_hash[tri][track] = demand_hash[tri][track] or {}
+                        local work_items = triage_hash[tri][1][track] or {}
+                        for _, work in ipairs(work_items) do
+                                demand_hash[tri][track] = 
+                                to_num_people(Work.sum_demand(work_items), pl.num_weeks)
+                        end
+                end
+        end
+
+
+        -- Print demand by triage/track
+        print_by_triage_and_track(io.stdout, triage_tags, all_tracks, demand_hash)
+
+        -- Also print to file
+        local file = assert(io.open("./data/export.txt", "w"))
+        print_by_triage_and_track(file, triage_tags, all_tracks, demand_hash)
         file:close()
 end
 
@@ -711,7 +599,8 @@ function rs()
                 local people_list = people_by_skill[skill]
                 print(string.format("%s ==", skill))
                 for j = 1,#people_list do
-                        print(string.format("     %3d. %s", j, people_list[j].name))
+                        print(string.format("     %3d. %-30s %.1f", j, people_list[j].name,
+                                                             people_list[j].skills[skill]))
                 end
         end
 
@@ -721,6 +610,12 @@ function rs()
 	)))
 end
 
+function rss()
+        local total_bandwidth = Person.sum_bandwidth(ppl, pl.num_weeks)
+	print(string.format("TOTAL Skill Supply: %s", Writer.tags_to_string(
+		to_num_people(total_bandwidth, pl.num_weeks), ", "
+	)))
+end
 
 -- HELP -----------------------------------------------------------------------
 --
@@ -737,36 +632,24 @@ export():	Writes data to "data/output.txt" in a form for Google Docs
 p():		Alias for print
 pw(ws):		Print work items "ws"
 
--- Triage
-twp(r,l):	Triage work at rank 'r' and level 'l' (1, 2, 3) for Product
-twe(r,l):	Triage work at rank 'r' and level 'l' (1, 2, 3) for Eng
-tw(r,l):	Triage work at rank 'r' and level 'l' (1, 2, 3) for Overall
-
 -- Select work
 r(rank):	Selects work item at rank 'rank'. May also take an array of ranks.
 wall():		Selects all work in plan
 wac():		Selects work above cutline
 w1():		Work with overall triage of 1
 w2():		Work with overall triage of 2
-wprod1():	Work with Product triage of 1
-wprod2():	Work with Product triage of 2
-weng1():	Work with Eng triage of 1
-weng2():	Work with Eng triage of 2
-wc1():		Work with conflicts of 1s between Prod and Eng
-
--- Updating work
-est(r, s, e):	Set estimate of work ranked at 'r'. Takes pairs of skill/T-shirt pairs
 
 -- Updating plan
 rank(ws, p):	Ranks work items "ws" at position "p". May use work items or IDs.
-aw(name):	Adds work to plan.
 sc(num):	Sets cutline
 
 -- Reports
 rfl():		Report feasible line.
 rrt():		Report running totals
-rbt(t):		Report by track. Takes optional track(s) "t" to filter on
-rbte(p):	Report by track export with optional triage "p"
+rbt(t):		Report by track. Takes optional track(s) "t" to filter on and triage.
+                Using a triage of 1 selects all 1s. Using 1.5 selects 1s and 1.5s.
+rbc(t):		Reports items below cutline by track/triage
+rde():		Report data export (demand by triage and track)
 rs():		Report available supply
 ]]
 	)
