@@ -36,6 +36,8 @@
 /* Byte 1 of websocket frame */
 #define WS_FRAME_MASK 0x80
 
+#define MAXLINE 1000
+
 /* ============================================================================ 
  * Static declarations
  */
@@ -332,6 +334,98 @@ size_t ws_make_pong_frame(uint8_t **frame_p)
  * NOTE: This frees any memory in the buffer
  */
 
+enum WebsocketFrameType ws_read_next_message(int connfd, ws_read_bytes_fp read_bytes,
+                                                                 char **message)
+{
+        WebsocketFrame frame;
+        enum WebsocketFrameType result;
+        const uint8_t *frame_message = NULL;
+	char buf[MAXLINE+1];
+        int num_to_read;
+        int num_read;
+
+        /*
+         * This reads frames in and combines any fragments together
+         */
+        frame.buf = NULL;
+        while (1) {
+                /*
+                 * Read a frame in
+                 */
+                ws_init_frame(&frame);
+                do {
+                        num_to_read = frame.num_to_read;
+                        if (num_to_read > MAXLINE)
+                                num_to_read = MAXLINE;
+
+                        if (num_to_read == 0)
+                                continue;
+
+                        if ((num_read = read_bytes(connfd, buf, num_to_read)) < 0) {
+                                result = WS_FT_ERROR;
+                                goto error;
+                        }
+
+                        ws_append_bytes(&frame, (uint8_t *)buf, num_read);
+                }
+                while (ws_update_read_state(&frame) == 1);
+
+                /*
+                 * Handle frame
+                 */
+                if (ws_is_ping_frame(frame.buf)) {
+                        result = WS_FT_PING;
+                        *message = NULL;
+                }
+                else if (ws_is_pong_frame(frame.buf)) {
+                        result = WS_FT_PONG;
+                        *message = NULL;
+                }
+                else if (ws_is_close_frame(frame.buf)) {
+                        result = WS_FT_CLOSE;
+                        *message = NULL;
+                }
+
+                /*
+                 * If this frame is not the final fragment, continue reading
+                 * frames in.
+                 * TODO: Implement this
+                 */
+                break;
+
+#if 0
+
+                /*
+                 * Handle frame
+                 */
+                if (ws_is_close_frame(frame.buf)) {
+                        break;
+                }
+                else if (ws_is_ping_frame(frame.buf)) {
+                        // TODO: Need to return length as well as msg pointer
+                        response_frame = ws_make_pong_frame();
+                        my_writen(connfd, response_frame, 2);
+                        free((uint8_t *)response_frame);
+                }
+                else if (ws_is_text_frame(frame.buf)) {
+                        frame_message = ws_extract_message(frame.buf);
+                        printf("Got a message: %s\n", frame_message);
+
+                        // Echo response, then close
+                        // TODO: Need to return length as well as msg pointer
+                        response_frame = ws_make_text_frame((char *)frame_message, NULL);
+                        my_writen(connfd, response_frame, strlen((char *)response_frame));
+                        free((uint8_t *)response_frame);
+                }
+#endif
+        }
+
+error:
+        free(frame.buf);
+        return result;
+}
+
+
 int ws_init_frame(WebsocketFrame *frame)
 {
         free(frame->buf);
@@ -555,6 +649,11 @@ int ws_is_close_frame(const uint8_t* frame_str)
 int ws_is_ping_frame(const uint8_t* frame_str)
 {
         return (frame_str[0] & 0xf) == WS_FRAME_OP_PING;
+}
+
+int ws_is_pong_frame(const uint8_t* frame_str)
+{
+        return (frame_str[0] & 0xf) == WS_FRAME_OP_PONG;
 }
 
 int ws_is_text_frame(const uint8_t* frame_str)
