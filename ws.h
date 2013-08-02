@@ -76,5 +76,6 @@ int ws_is_close_frame(const uint8_t* frame_str);
 int ws_is_ping_frame(const uint8_t* frame_str);
 int ws_is_pong_frame(const uint8_t* frame_str);
 int ws_is_text_frame(const uint8_t* frame_str);
+int ws_is_final(const uint8_t* frame_str);
 
 #endif

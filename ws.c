@@ -334,15 +334,38 @@ size_t ws_make_pong_frame(uint8_t **frame_p)
  * NOTE: This frees any memory in the buffer
  */
 
+static char *append_message(char *dst, char *src)
+{
+        size_t src_len;
+        size_t dst_len;
+
+        if (src == NULL)
+                return dst;
+
+        if (dst == NULL)
+                return src;
+
+        src_len = strlen(src);
+        dst_len = strlen(dst);
+        if ((dst=(char *)realloc(dst, dst_len + src_len + 1)) == NULL)
+                err_abort(-1, "Can't realloc in append_message");
+
+        strncpy(dst+dst_len, src, src_len);
+        free(src);
+
+        return dst;
+}
+
 enum WebsocketFrameType ws_read_next_message(int connfd, ws_read_bytes_fp read_bytes,
                                                                  char **message)
 {
         WebsocketFrame frame;
         enum WebsocketFrameType result;
-        const uint8_t *frame_message = NULL;
+        char *frame_message = NULL;
 	char buf[MAXLINE+1];
         int num_to_read;
         int num_read;
+        char *tmp = NULL;
 
         /*
          * This reads frames in and combines any fragments together
@@ -373,51 +396,30 @@ enum WebsocketFrameType ws_read_next_message(int connfd, ws_read_bytes_fp read_b
                 /*
                  * Handle frame
                  */
-                if (ws_is_ping_frame(frame.buf)) {
+                if (ws_is_text_frame(frame.buf)) {
+                        result = WS_FT_TEXT;
+                        tmp = (char *) ws_extract_message(frame.buf);
+
+                        /* NOTE: append_message will free tmp if needed */
+                        frame_message = append_message(frame_message, tmp);
+                }
+                else if (ws_is_ping_frame(frame.buf))
                         result = WS_FT_PING;
-                        *message = NULL;
-                }
-                else if (ws_is_pong_frame(frame.buf)) {
+                else if (ws_is_pong_frame(frame.buf))
                         result = WS_FT_PONG;
-                        *message = NULL;
-                }
-                else if (ws_is_close_frame(frame.buf)) {
+                else if (ws_is_close_frame(frame.buf))
                         result = WS_FT_CLOSE;
-                        *message = NULL;
-                }
+                else
+                        fprintf(stderr, "Unknown websocket frame type\n");
 
                 /*
-                 * If this frame is not the final fragment, continue reading
-                 * frames in.
-                 * TODO: Implement this
+                 * If this is the final fragment, we're done; otherwise,
+                 * continue collecting frames.
                  */
-                break;
-
-#if 0
-
-                /*
-                 * Handle frame
-                 */
-                if (ws_is_close_frame(frame.buf)) {
+                if (ws_is_final(frame.buf)) {
+                        *message = frame_message;
                         break;
                 }
-                else if (ws_is_ping_frame(frame.buf)) {
-                        // TODO: Need to return length as well as msg pointer
-                        response_frame = ws_make_pong_frame();
-                        my_writen(connfd, response_frame, 2);
-                        free((uint8_t *)response_frame);
-                }
-                else if (ws_is_text_frame(frame.buf)) {
-                        frame_message = ws_extract_message(frame.buf);
-                        printf("Got a message: %s\n", frame_message);
-
-                        // Echo response, then close
-                        // TODO: Need to return length as well as msg pointer
-                        response_frame = ws_make_text_frame((char *)frame_message, NULL);
-                        my_writen(connfd, response_frame, strlen((char *)response_frame));
-                        free((uint8_t *)response_frame);
-                }
-#endif
         }
 
 error:
@@ -643,20 +645,25 @@ const uint8_t *ws_extract_message(const uint8_t *frame)
  */
 int ws_is_close_frame(const uint8_t* frame_str)
 {
-        return (frame_str[0] & 0xf) == WS_FRAME_OP_CLOSE;
+        return (frame_str[0] & 0x0f) == WS_FRAME_OP_CLOSE;
 }
 
 int ws_is_ping_frame(const uint8_t* frame_str)
 {
-        return (frame_str[0] & 0xf) == WS_FRAME_OP_PING;
+        return (frame_str[0] & 0x0f) == WS_FRAME_OP_PING;
 }
 
 int ws_is_pong_frame(const uint8_t* frame_str)
 {
-        return (frame_str[0] & 0xf) == WS_FRAME_OP_PONG;
+        return (frame_str[0] & 0x0f) == WS_FRAME_OP_PONG;
 }
 
 int ws_is_text_frame(const uint8_t* frame_str)
 {
-        return (frame_str[0] & 0xf) == WS_FRAME_OP_TEXT;
+        return (frame_str[0] & 0x0f) == WS_FRAME_OP_TEXT;
+}
+
+int ws_is_final(const uint8_t* frame_str)
+{
+        return (frame_str[0] & 0xf0) == WS_FRAME_FIN;
 }

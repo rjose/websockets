@@ -37,7 +37,11 @@ Implementation
 . Extract medium and long message [X][X][X][][]
 . Make PING, PONG, and CLOSE frames [X]
 . Return frame length explicitly [X][X][]
+<<<<<<< HEAD
 . Read in frames [][][][][]
+=======
+. Read in frames [X][X][X][X][]
+>>>>>>> step9
 
 
 
@@ -137,6 +141,11 @@ a connection. This would be nice because then I could test it. Let's start by
 trying to write such a function. Done. OK, I should be able to write a
 function that sets a frame type and a message. Let's do that next.
 
+Alright, I can read PING, PONG, and CLOSE frames now. Let's do text messages
+next. OK, I can read in a text message frame. Now, let's try fragments. Done!
+Let's check in.
+
+
 Thoughts
 --------
 I think I'll symlink the websockets directory into the project that needs it
@@ -158,3 +167,6 @@ Need to do a prototype on a randomizer. For now, we can have a function that
 always returns the same numbers.
 
 At some point, I should figure out how to write the sha1 function.
+
+For binary data, we'll need to do something like base64 encode it and then
+send it back as a string. Otherwise, we need to return an explicit length.
