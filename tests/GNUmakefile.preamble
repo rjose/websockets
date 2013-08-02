@@ -6,4 +6,5 @@ test5_C_FILES += ../ws.c ../base64.c ./test_util.c
 test6_C_FILES += ../ws.c ../base64.c ./test_util.c
 test7_C_FILES += ../ws.c ../base64.c ./test_util.c
 test8_C_FILES += ../ws.c ../base64.c ./test_util.c
+test9_read_in_frames_C_FILES += ../ws.c ../base64.c ./test_util.c
 ADDITIONAL_TOOL_LIBS = -lssl -lcrypto -lm

@@ -3,14 +3,25 @@
 
 #include <stdint.h>
 
+typedef ssize_t (*ws_read_bytes_fp)(int fd, char *ptr, size_t maxlen);
+
 /* ============================================================================ 
  * Data structures
  */
+enum WebsocketFrameType {
+        WS_FT_ERROR = -1,
+        WS_FT_TEXT,
+        WS_FT_CLOSE,
+        WS_FT_PING,
+        WS_FT_PONG
+};
 
-enum WebsocketReadState {WSF_START,
-                         WSF_READ_MED_LEN,
-                         WSF_READ_LONG_LEN,
-                         WSF_READ};
+enum WebsocketReadState {
+        WSF_START,
+        WSF_READ_MED_LEN,
+        WSF_READ_LONG_LEN,
+        WSF_READ
+};
 
 typedef struct WebsocketFrame_ {
         uint8_t *buf;
@@ -47,6 +58,10 @@ size_t ws_make_pong_frame(uint8_t **frame_p);
  * Reading websocket frames
  * ------------------------
  */
+enum WebsocketFrameType ws_read_next_message(int fd,
+                                    ws_read_bytes_fp read_bytes, char **message);
+
+// TODO: Make these static functions
 int ws_init_frame(WebsocketFrame *frame);
 int ws_update_read_state(WebsocketFrame *frame);
 int ws_append_bytes(WebsocketFrame *frame, uint8_t *src, size_t n);
@@ -59,6 +74,8 @@ const uint8_t *ws_extract_message(const uint8_t *frame);
  */
 int ws_is_close_frame(const uint8_t* frame_str);
 int ws_is_ping_frame(const uint8_t* frame_str);
+int ws_is_pong_frame(const uint8_t* frame_str);
 int ws_is_text_frame(const uint8_t* frame_str);
+int ws_is_final(const uint8_t* frame_str);
 
 #endif
