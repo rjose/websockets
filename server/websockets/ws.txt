@@ -36,8 +36,12 @@ Implementation
 . Construct medium and long messages [X][X][X][X][X]
 . Extract medium and long message [X][X][X][][]
 . Make PING, PONG, and CLOSE frames [X]
-. Return frame length explicitly [][][]
+. Return frame length explicitly [X][X][]
+<<<<<<< HEAD
 . Read in frames [][][][][]
+=======
+. Read in frames [X][X][X][X][]
+>>>>>>> step9
 
 
 
@@ -110,6 +114,37 @@ This should be pretty straightforward. The beginning should be similar to
 ws_make_text_frame -- and that's all there is to this. Alright, I can make each
 of these frames.
 
+8 - Return frame length explicitly
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+OK, I got bitten by assuming that strings are NUL terminated. I need to
+rewrite the websocket frame functions to return an explicit length. Let's do
+TDD on this first. I have to update test3, test5, and test6. Alright, test5 is
+done. Let's do test3 next. Done. Now, let's do test6. Alright, we're done.
+Let's check this in.
+
+To round this out, we need to do the same for our other frame construction
+functions. Let's do that now. Done. Let's check this in.
+
+9 - Read in frames
+~~~~~~~~~~~~~~~~~~
+In qplan, I had to implement some code that was too low level for that module.
+What we need is to add that code to this websockets module and then expose it
+back out so we can call it without fuss. I'll start by doing some TDD. How do
+we deal with both control frames and messages? I think what we should do is
+have a function that takes a connection and returns a frame type and NUL
+terminated messages. This function will deal with fragments, but it won't send
+PONG frames or close connections by itself. We'll need to define some enums
+for callers to use.
+
+How should we test this? I guess I could pass in a function to do a read from
+a connection. This would be nice because then I could test it. Let's start by
+trying to write such a function. Done. OK, I should be able to write a
+function that sets a frame type and a message. Let's do that next.
+
+Alright, I can read PING, PONG, and CLOSE frames now. Let's do text messages
+next. OK, I can read in a text message frame. Now, let's try fragments. Done!
+Let's check in.
+
 
 Thoughts
 --------
@@ -132,3 +167,6 @@ Need to do a prototype on a randomizer. For now, we can have a function that
 always returns the same numbers.
 
 At some point, I should figure out how to write the sha1 function.
+
+For binary data, we'll need to do something like base64 encode it and then
+send it back as a string. Otherwise, we need to return an explicit length.

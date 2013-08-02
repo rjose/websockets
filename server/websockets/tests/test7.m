@@ -39,15 +39,15 @@ int main()
 
         START_SET("Make frames");
 
-        frame = ws_make_close_frame();
+        ws_make_close_frame(&frame);
         pass(1 == check_frame(close_frame, 2, frame), "Make close frame");
         free(frame);
 
-        frame = ws_make_ping_frame();
+        ws_make_ping_frame(&frame);
         pass(1 == check_frame(ping_frame, 2, frame), "Make ping frame");
         free(frame);
 
-        frame = ws_make_pong_frame();
+        ws_make_pong_frame(&frame);
         pass(1 == check_frame(pong_frame, 2, frame), "Make pong frame");
         free(frame);
 

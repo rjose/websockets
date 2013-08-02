@@ -3,7 +3,9 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "../ws.h"
+/* NOTE: Including the C file to test static functions */
+#include "../ws.c"
+
 #include "test_util.h"
 #import "Testing.h"
 
