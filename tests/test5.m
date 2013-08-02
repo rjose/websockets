@@ -30,10 +30,12 @@ int main()
 {
         const char *message_body = NULL;
         const uint8_t *frame = NULL;
+        size_t frame_length;
 
         START_SET("Extract medium message");
         load_data(med126, 126, med126txt);
-        frame = ws_make_text_frame(med126, NULL);
+        frame_length = ws_make_text_frame(med126, NULL, &frame);
+        pass(126 + 2 + 2 == frame_length, "Check frame length");
         pass(0x81 == frame[0], "Check first byte of med126 frame");
         pass(0x7e == frame[1], "Check second byte of med126 frame");
         pass(0x00 == frame[2], "Check 1st len byte of med126 frame");
@@ -45,7 +47,8 @@ int main()
 
         START_SET("Extract long message");
         load_data(long66000, 66000, long66000txt);
-        frame = ws_make_text_frame(long66000, NULL);
+        frame_length = ws_make_text_frame(long66000, NULL, &frame);
+        pass(66000 + 2 + 8 == frame_length, "Check frame length");
         pass(0x81 == frame[0], "Check first byte of long frame");
         pass(0x7f == frame[1], "Check second byte of long frame");
         pass(0x00 == frame[2], "Check 1st len byte of long frame");

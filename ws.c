@@ -168,7 +168,7 @@ static uint8_t toggle_mask(uint8_t c, size_t index, const uint8_t mask[4])
  * NOTE: This function will always set the FIN bit to 1. If you want to send
  * fragments, set this to 0 once you get the frame back.
  */
-const uint8_t *ws_make_text_frame(const char *message, const uint8_t mask[4])
+size_t ws_make_text_frame(const char *message, const uint8_t mask[4], uint8_t **frame_p)
 {
         uint64_t i;
         uint64_t message_len;
@@ -237,10 +237,15 @@ const uint8_t *ws_make_text_frame(const char *message, const uint8_t mask[4])
                                        toggle_mask(message[i], i, mask);
         }
 
-        return result;
+        /*
+         * Return results
+         */
+        *frame_p = result;
+
+        return frame_len;
 }
 
-const uint8_t *ws_make_close_frame()
+size_t ws_make_close_frame(uint8_t **frame_p)
 {
         uint8_t byte0, byte1;     /* First two bytes of the frame */
         uint8_t *result = NULL;
@@ -256,10 +261,15 @@ const uint8_t *ws_make_close_frame()
         result[0] = byte0;
         result[1] = byte1;
 
-        return result;
+        /*
+         * Return result
+         */
+        *frame_p = result;
+
+        return 2;
 }
 
-const uint8_t *ws_make_ping_frame()
+size_t ws_make_ping_frame(uint8_t **frame_p)
 {
         uint8_t byte0, byte1;     /* First two bytes of the frame */
         uint8_t *result = NULL;
@@ -275,10 +285,14 @@ const uint8_t *ws_make_ping_frame()
         result[0] = byte0;
         result[1] = byte1;
 
-        return result;
+        /*
+         * Return result
+         */
+        *frame_p = result;
+        return 2;
 }
 
-const uint8_t *ws_make_pong_frame()
+size_t ws_make_pong_frame(uint8_t **frame_p)
 {
         uint8_t byte0, byte1;     /* First two bytes of the frame */
         uint8_t *result = NULL;
@@ -294,7 +308,11 @@ const uint8_t *ws_make_pong_frame()
         result[0] = byte0;
         result[1] = byte1;
 
-        return result;
+        /*
+         * Return result
+         */
+        *frame_p = result;
+        return 2;
 }
 
 

@@ -32,7 +32,7 @@ int main()
 
         START_SET("Extract medium message");
         load_data(med126, 126, med126txt);
-        frame = ws_make_text_frame(med126, NULL);
+        ws_make_text_frame(med126, NULL, &frame);
         
         message_body = ws_extract_message(frame);
         pass(0 == strcmp(med126, message_body), "Extract medium");
@@ -45,7 +45,7 @@ int main()
 
         START_SET("Extract long message");
         load_data(long66000, 66000, long66000txt);
-        frame = ws_make_text_frame(long66000, NULL);
+        ws_make_text_frame(long66000, NULL, &frame);
         
         message_body = ws_extract_message(frame);
         pass(0 == strcmp(long66000, message_body), "Extract long");

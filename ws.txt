@@ -110,6 +110,16 @@ This should be pretty straightforward. The beginning should be similar to
 ws_make_text_frame -- and that's all there is to this. Alright, I can make each
 of these frames.
 
+8 - Return frame length explicitly
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+OK, I got bitten by assuming that strings are NUL terminated. I need to
+rewrite the websocket frame functions to return an explicit length. Let's do
+TDD on this first. I have to update test3, test5, and test6. Alright, test5 is
+done. Let's do test3 next. Done. Now, let's do test6. Alright, we're done.
+Let's check this in.
+
+To round this out, we need to do the same for our other frame construction
+functions. Let's do that now. Done. Let's check this in.
 
 Thoughts
 --------

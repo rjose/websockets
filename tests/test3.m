@@ -71,21 +71,25 @@ uint8_t masked_hello_frame[] = {0x81, 0x85,
 int main()
 {
         const uint8_t *frame = NULL;
+        ssize_t frame_len = 0;
 
         /*
          * Build frame for small message
          */
         START_SET("Build small message");
 
-        frame = ws_make_text_frame(hello_message, NULL);
+        frame_len = ws_make_text_frame(hello_message, NULL, &frame);
+        pass(7 == frame_len, "Check frame length");
         pass(1 == check_frame(hello_message_frame, 7, frame), "Hello message");
         free(frame);
 
-        frame = ws_make_text_frame(empty_message, NULL);
+        frame_len = ws_make_text_frame(empty_message, NULL, &frame);
+        pass(2 == frame_len, "Check frame length");
         pass(1 == check_frame(empty_message_frame, 2, frame), "'' message");
         free(frame);
 
-        frame = ws_make_text_frame(big_short_message, NULL);
+        frame_len = ws_make_text_frame(big_short_message, NULL, &frame);
+        pass(127 == frame_len, "Check frame length");
         pass(1 == check_frame(big_short_frame_start, 2, frame), "big short message");
         // Check first and last chars of message body
         pass(0x4e == frame[2], "First letter should be 'N'");
@@ -100,7 +104,8 @@ int main()
         START_SET("Build small masked message");
 
         uint8_t mask[] = {0x37, 0xfa, 0x21, 0x3d};
-        frame = ws_make_text_frame(hello_message, mask);
+        frame_len = ws_make_text_frame(hello_message, mask, &frame);
+        pass(11 == frame_len, "Check frame length");
         pass(1 == check_frame(masked_hello_frame, 11, frame), "Masked hello");
 
         END_SET("Build small masked message");

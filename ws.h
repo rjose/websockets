@@ -36,10 +36,11 @@ const char *ws_complete_handshake(const char *req_str);
  * Writing websocket frames
  * ------------------------
  */
-const uint8_t *ws_make_text_frame(const char *message, const uint8_t mask[4]);
-const uint8_t *ws_make_close_frame();
-const uint8_t *ws_make_ping_frame();
-const uint8_t *ws_make_pong_frame();
+size_t ws_make_text_frame(const char *message, const uint8_t mask[4],
+                                                         uint8_t **frame_p);
+size_t ws_make_close_frame(uint8_t **frame_p);
+size_t ws_make_ping_frame(uint8_t **frame_p);
+size_t ws_make_pong_frame(uint8_t **frame_p);
 
 
 /* 
