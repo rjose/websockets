@@ -45,6 +45,9 @@ static void err_abort(int, const char *);
 static int get_ws_key(char *, size_t, const char *);
 static uint8_t toggle_mask(uint8_t, size_t, const uint8_t [4]);
 static int ws_extend_frame_buf(WebsocketFrame *frame, size_t more_len);
+static int ws_init_frame(WebsocketFrame *frame);
+static int ws_update_read_state(WebsocketFrame *frame);
+static int ws_append_bytes(WebsocketFrame *frame, uint8_t *src, size_t n);
 
 static char ws_magic_string[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
@@ -428,7 +431,7 @@ error:
 }
 
 
-int ws_init_frame(WebsocketFrame *frame)
+static int ws_init_frame(WebsocketFrame *frame)
 {
         free(frame->buf);
         frame->buf = NULL;
@@ -448,7 +451,7 @@ int ws_init_frame(WebsocketFrame *frame)
  *
  * This function is idempotent.
  */
-int ws_update_read_state(WebsocketFrame *frame)
+static int ws_update_read_state(WebsocketFrame *frame)
 {
         size_t i;
         uint8_t byte1;
@@ -550,7 +553,7 @@ static int ws_extend_frame_buf(WebsocketFrame *frame, size_t more_len)
  * in. The number of bytes to read should have been computed prior to calling
  * this either by "ws_init_frame" or "ws_update_read_state".
  */
-int ws_append_bytes(WebsocketFrame *frame, uint8_t *src, size_t n)
+static int ws_append_bytes(WebsocketFrame *frame, uint8_t *src, size_t n)
 {
         size_t i;
         if (frame->num_read + n > frame->buf_len)

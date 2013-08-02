@@ -60,12 +60,6 @@ size_t ws_make_pong_frame(uint8_t **frame_p);
  */
 enum WebsocketFrameType ws_read_next_message(int fd,
                                     ws_read_bytes_fp read_bytes, char **message);
-
-// TODO: Make these static functions
-int ws_init_frame(WebsocketFrame *frame);
-int ws_update_read_state(WebsocketFrame *frame);
-int ws_append_bytes(WebsocketFrame *frame, uint8_t *src, size_t n);
-
 const uint8_t *ws_extract_message(const uint8_t *frame);
 
 /*
