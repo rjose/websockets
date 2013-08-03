@@ -48,6 +48,7 @@ static int ws_extend_frame_buf(WebsocketFrame *frame, size_t more_len);
 static int ws_init_frame(WebsocketFrame *frame);
 static int ws_update_read_state(WebsocketFrame *frame);
 static int ws_append_bytes(WebsocketFrame *frame, uint8_t *src, size_t n);
+static char *append_message(char *, char *);
 
 static char ws_magic_string[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
@@ -337,28 +338,6 @@ size_t ws_make_pong_frame(uint8_t **frame_p)
  * NOTE: This frees any memory in the buffer
  */
 
-static char *append_message(char *dst, char *src)
-{
-        size_t src_len;
-        size_t dst_len;
-
-        if (src == NULL)
-                return dst;
-
-        if (dst == NULL)
-                return src;
-
-        src_len = strlen(src);
-        dst_len = strlen(dst);
-        if ((dst=(char *)realloc(dst, dst_len + src_len + 1)) == NULL)
-                err_abort(-1, "Can't realloc in append_message");
-
-        strncpy(dst+dst_len, src, src_len);
-        free(src);
-
-        return dst;
-}
-
 enum WebsocketFrameType ws_read_next_message(int connfd, ws_read_bytes_fp read_bytes,
                                                                  char **message)
 {
@@ -379,7 +358,7 @@ enum WebsocketFrameType ws_read_next_message(int connfd, ws_read_bytes_fp read_b
                  * Read a frame in
                  */
                 ws_init_frame(&frame);
-                do {
+                while (ws_update_read_state(&frame) == 1) {
                         num_to_read = frame.num_to_read;
                         if (num_to_read > MAXLINE)
                                 num_to_read = MAXLINE;
@@ -394,7 +373,6 @@ enum WebsocketFrameType ws_read_next_message(int connfd, ws_read_bytes_fp read_b
 
                         ws_append_bytes(&frame, (uint8_t *)buf, num_read);
                 }
-                while (ws_update_read_state(&frame) == 1);
 
                 /*
                  * Handle frame
@@ -430,6 +408,28 @@ error:
         return result;
 }
 
+static char *append_message(char *dst, char *src)
+{
+        size_t src_len;
+        size_t dst_len;
+
+        if (src == NULL)
+                return dst;
+
+        if (dst == NULL)
+                return src;
+
+        src_len = strlen(src);
+        dst_len = strlen(dst);
+        if ((dst=(char *)realloc(dst, dst_len + src_len + 1)) == NULL)
+                err_abort(-1, "Can't realloc in append_message");
+
+        strncpy(dst+dst_len, src, src_len);
+        free(src);
+
+        return dst;
+}
+
 
 static int ws_init_frame(WebsocketFrame *frame)
 {
@@ -459,25 +459,28 @@ static int ws_update_read_state(WebsocketFrame *frame)
         int mask_len;
         int num_len_bytes;
 
-        /* If there's more to read, then come back when it's done */
+        /* If there's more to read, then come back when you're done */
         if (frame->num_to_read > 0)
                 return 1;
 
-        /* 
-         * At this point, all the reading we were planning to do is done. Now we
-         * have to figure out what (if anything) to do next. 
+        /*
+         * If we were reading in the message payload (the last part of the
+         * frame), and there's no more to read (see condition directly above),
+         * then there's nothing left to do.
          */
-
-
-        /* If we're done reading the message, we're done with this frame. */
         if (frame->read_state == WSF_READ)
                 return 0;
 
 
         /*
-         * If we're at the beginning, we need to check to see if there's a mask
-         * to read and if there are any more length bytes to read. If it's just
-         * a short message, we know exactly what's left to read for the frame. 
+         * If we're just starting and have finished reading the first 2 bytes of the
+         * frame, we need to check if we there's a mask we need to read in and
+         * how long the message is.
+         *
+         * For short messages (<= 125) we have all the information we need in
+         * the first 2 bytes of the frame. For medium and longer messages, we'll
+         * need to read in more bytes to compute the length before we can start
+         * reading in the payload.
          */
         if (frame->read_state == WSF_START) {
                 byte1 = frame->buf[1];
@@ -503,23 +506,18 @@ static int ws_update_read_state(WebsocketFrame *frame)
                 return 1;
         }
 
-        /*
-         * If we're not ready the medium or long length bytes, I'm not sure how
-         * we got here.
-         */
-        if (frame->read_state != WSF_READ_MED_LEN &&
-                        frame->read_state != WSF_READ_LONG_LEN)
-                return -1;
 
         /*
-         * At this point, we can figure out how long the rest of the frame is
-         * for the medium and long messages. Once this is done, we can extend
-         * the frame buffer to the right length and go into WSF_READ mode.
+         * At this point, we have enough info to compute the payload length.
          */
         if (frame->read_state == WSF_READ_MED_LEN)
                 num_len_bytes = NUM_MED_LEN_BYTES;
-        else
+        else if (frame->read_state == WSF_READ_LONG_LEN)
                 num_len_bytes = NUM_LONG_LEN_BYTES;
+        else {
+                /* If we got here, then something got messed up */
+                return -1;
+        }
 
         message_len = 0;
         for (i = 0; i < num_len_bytes; i++) {
@@ -527,10 +525,7 @@ static int ws_update_read_state(WebsocketFrame *frame)
                 message_len += frame->buf[2 + i];
         }
 
-        byte1 = frame->buf[1];
-        mask_len = (byte1 & WS_FRAME_MASK) ? 4 : 0;
-
-        frame->num_to_read = message_len + mask_len;
+        frame->num_to_read = message_len;
         frame->read_state = WSF_READ;
         ws_extend_frame_buf(frame, frame->num_to_read);
         return 1;

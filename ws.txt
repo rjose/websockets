@@ -37,11 +37,8 @@ Implementation
 . Extract medium and long message [X][X][X][][]
 . Make PING, PONG, and CLOSE frames [X]
 . Return frame length explicitly [X][X][]
-<<<<<<< HEAD
-. Read in frames [][][][][]
-=======
 . Read in frames [X][X][X][X][]
->>>>>>> step9
+. Debug medium-sized messages [][][][]
 
 
 
@@ -144,6 +141,16 @@ function that sets a frame type and a message. Let's do that next.
 Alright, I can read PING, PONG, and CLOSE frames now. Let's do text messages
 next. OK, I can read in a text message frame. Now, let's try fragments. Done!
 Let's check in.
+
+10 - Debug medium-sized messages
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+I think there's a problem where sometimes I think a medium sized message is
+longer than what the frame states. Let me look at the spec and my code a little
+closer. OK, I think I found the issue. It looks like I was double counting the
+mask bytes for medium and long messages.
+
+NOTE: I need some way to timeout the read and kill it. Probably need to refer to the
+Stevens book again.
 
 
 Thoughts
