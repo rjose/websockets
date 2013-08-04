@@ -390,8 +390,10 @@ enum WebsocketFrameType ws_read_next_message(int connfd, ws_read_bytes_fp read_b
                         result = WS_FT_PONG;
                 else if (ws_is_close_frame(frame.buf))
                         result = WS_FT_CLOSE;
-                else
+                else {
+                        result = WS_FT_ERROR;
                         fprintf(stderr, "Unknown websocket frame type\n");
+                }
 
                 /*
                  * If this is the final fragment, we're done; otherwise,
