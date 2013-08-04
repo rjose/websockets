@@ -217,6 +217,10 @@ back to the websocket library when I work on that in earnest. Alright, I was
 able to get the PING/PONG to work. Technically, I'm done so let's check in and
 then rethink my git strategy.
 
+Notes
+-----
+I'm using a link:https://github.com/craigmj/json4lua[json lua package].
+Basically just installing the json writing part in the lua path.
 
 Thoughts
 --------
