@@ -6,6 +6,7 @@
 #include <errno.h>
 
 #include "../ws.h"
+#include "../read_message.c"
 #include "test_util.h"
 #import "Testing.h"
 

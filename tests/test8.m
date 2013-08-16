@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 /* NOTE: Including the C file to test static functions */
-#include "../ws.c"
+#include "../read_message.c"
 
 #include "test_util.h"
 #import "Testing.h"

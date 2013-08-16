@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "../ws.h"
+#include "../read_message.c"
 
 #import "Testing.h"
 

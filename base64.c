@@ -3,17 +3,30 @@
 
 #include "base64.h"
 
+/*==============================================================================
+ * Defines
+ */
+
 #define PADDING '='
 
-/* ============================================================================
+
+/*==============================================================================
  * Static declarations
  */
-static int char_to_data(char c, uint8_t *data);
-
 const static char digits64[] =
              "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
+static int char_to_data(char c, uint8_t *data);
 
+
+/*==============================================================================
+ * Public API
+ */
+
+
+/*------------------------------------------------------------------------------
+ * Converts binary src bytes to base64-encoded text in dst.
+ */
 int base64_encode(char **dst, const uint8_t *src, size_t len)
 {
         size_t i;
@@ -117,24 +130,9 @@ int base64_encode(char **dst, const uint8_t *src, size_t len)
 }
 
 
-static int char_to_data(char c, uint8_t *data)
-{
-        if (c >= 'A' && c <= 'Z')
-                *data = c - 'A';
-        else if (c >= 'a' && c <= 'z')
-                *data = c - 'a' + 26;
-        else if (c >= '0' && c <= '9')
-                *data = c - '0' + 52;
-        else if (c == '+')
-                *data = 62;
-        else if (c == '/')
-                *data = 63;
-        else
-                return -1;
-
-        return 0;
-}
-
+/*------------------------------------------------------------------------------
+ * Converts a base64-encoded string into binary bytes.
+ */
 int base64_decode(uint8_t **dst, const char *src, size_t *data_len)
 {
         size_t i;
@@ -256,3 +254,28 @@ error:
         return -1;
 }
 
+
+/*==============================================================================
+ * Static functions
+ */
+
+/*------------------------------------------------------------------------------
+ * Maps a character into its agreed-upon base64 value.
+ */
+static int char_to_data(char c, uint8_t *data)
+{
+        if (c >= 'A' && c <= 'Z')
+                *data = c - 'A';
+        else if (c >= 'a' && c <= 'z')
+                *data = c - 'a' + 26;
+        else if (c >= '0' && c <= '9')
+                *data = c - '0' + 52;
+        else if (c == '+')
+                *data = 62;
+        else if (c == '/')
+                *data = 63;
+        else
+                return -1;
+
+        return 0;
+}
